@@ -1064,11 +1064,24 @@ kbd {
   height: 100% !important;
   touch-action: none;
 }
-.space-tools {
+.space-dock {
   position: absolute;
   left: 12px;
   right: 12px;
   bottom: 12px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.space-dock > * {
+  pointer-events: auto;
+}
+.space-tools {
+  position: relative;
+  align-self: stretch;
   display: flex;
   gap: 8px;
   align-items: center;
@@ -2234,10 +2247,13 @@ details.rules:not([open]) summary {
     padding-bottom: 14px;
   }
   /* 3D-gereedschap in één smalle, veegbare rij */
-  .space-tools {
+  .space-dock {
     left: 8px;
     right: 8px;
     bottom: 8px;
+    gap: 6px;
+  }
+  .space-tools {
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
@@ -2259,8 +2275,6 @@ details.rules:not([open]) summary {
     width: 64px;
   }
   .navpad3d {
-    top: 8px;
-    right: 8px;
     padding: 5px;
     gap: 6px;
   }
@@ -2352,10 +2366,7 @@ details.rules:not([open]) summary {
 
 /* zwevende pijlkruisen in de 3D-weergave */
 .navpad3d {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 3;
+  position: relative;
   display: flex;
   gap: 8px;
   padding: 6px;

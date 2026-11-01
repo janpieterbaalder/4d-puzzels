@@ -233,9 +233,10 @@ export function playScreen(p: PlayParams): Screen {
     const gap = h("input", { type: "range", min: "0", max: "1.2", step: "0.05", value: String(space.gap), title: "Ruimte tussen cellen" }) as HTMLInputElement;
     gap.oninput = () => space!.setGap(Number(gap.value));
     tools.append(spinBtn, h("label", { class: "gap", title: "Ruimte tussen cellen" }, h("span", {}, "ruimte"), gap), h("button", { class: "round-btn small", title: "Camera herstellen", html: UI.camera, onclick: () => space!.resetCamera() }));
+    const sdock = h("div", { class: "space-dock" });
     if (D >= 3 && T.id !== "maze") {
       const ov = buildNavOverlay();
-      spacePane.appendChild(ov);
+      sdock.appendChild(ov);
       const navT = h("button", {
         class: "round-btn small" + (ov.hidden ? "" : " on"),
         title: "Navigatiepijlen tonen/verbergen",
@@ -245,6 +246,7 @@ export function playScreen(p: PlayParams): Screen {
           ov.hidden = !ov.hidden;
           store.setSettings({ navPad: !ov.hidden });
           navT.classList.toggle("on", !ov.hidden);
+          space?.resetCamera();
         },
       });
       tools.appendChild(navT);
@@ -265,14 +267,41 @@ export function playScreen(p: PlayParams): Screen {
               paintSel();
             }
             for (const x of fseg.querySelectorAll<HTMLElement>("button")) x.classList.toggle("on", x.dataset.f === m);
+            lseg.hidden = m !== "board";
             applyFocus();
           },
         }, label);
         fseg.appendChild(b);
       }
-      tools.prepend(fseg);
+      // oriëntatie van de oplichtende laag
+      const lseg = h("div", { class: "seg small layer-seg", title: "Welke laag oplicht" });
+      for (const [ax, label, title] of [
+        [1, "Liggend", "Horizontale laag (y vast)"],
+        [2, "Staand", "Staande laag recht van voren, zoals de borden (z vast)"],
+        [0, "Diepte", "Staande laag die de diepte in loopt (x vast)"],
+      ] as const) {
+        lseg.appendChild(
+          h("button", {
+            "data-ax": ax,
+            title,
+            class: ax === layerAxis ? "on" : "",
+            onclick: () => {
+              layerAxis = ax;
+              for (const x of lseg.querySelectorAll<HTMLElement>("button")) x.classList.toggle("on", Number(x.dataset.ax) === ax);
+              applyFocus();
+            },
+          }, label),
+        );
+      }
+      lseg.hidden = focusMode !== "board";
+      tools.prepend(fseg, lseg);
     }
-    spacePane.appendChild(tools);
+    sdock.appendChild(tools);
+    spacePane.appendChild(sdock);
+    // model boven de knoppen centreren: ondermarge = hoogte van het onderste dock
+    const insetRO = new ResizeObserver(() => space?.setInsetBottom(sdock.offsetHeight + 12));
+    insetRO.observe(sdock);
+    cleanups.push(() => insetRO.disconnect());
     if (D === 4 && store.settings().autoRotate) {
       space.setAutoRotate(true);
       spinBtn.classList.add("on");
@@ -374,6 +403,8 @@ export function playScreen(p: PlayParams): Screen {
   const dpad: { a: number; d: number; b: HTMLButtonElement }[] = [];
   const navBtns: { a: number; d: number; b: HTMLButtonElement }[] = [];
   let focusMode: "all" | "lines" | "board" = "all";
+  /** Welke laag oplicht in Laag-modus: de vaste as (0 = diepte/x, 1 = liggend/y, 2 = staand/z). */
+  let layerAxis = 2;
   let focusKey = "";
   function buildDock() {
     dock.innerHTML = "";
@@ -624,7 +655,7 @@ export function playScreen(p: PlayParams): Screen {
   /** Focus in de 3D-weergave: alleen de lijnen of de laag van de gekozen cel volledig tonen. */
   function applyFocus() {
     if (!space) return;
-    const key = focusMode + ":" + sel;
+    const key = focusMode + ":" + sel + ":" + layerAxis;
     if (key === focusKey) return;
     focusKey = key;
     const g = game.grid;
@@ -637,7 +668,8 @@ export function playScreen(p: PlayParams): Screen {
       });
     else
       space.setFilter((i) => {
-        for (let a = 2; a < g.D; a++) if (g.c(i, a) !== g.c(sel, a)) return false;
+        // de laag door de gekozen cel: de gekozen as vast, en in 4D ook w (binnen dezelfde kubus)
+        for (let a = 0; a < g.D; a++) if ((a === layerAxis || a >= 3) && g.c(i, a) !== g.c(sel, a)) return false;
         return true;
       });
   }

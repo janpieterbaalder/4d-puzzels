@@ -93,11 +93,29 @@ export class Stage {
   reframeOnResize = true;
   private userMoved = false;
 
+  /** Ruimte (px) onderin die door knoppen bedekt is; het beeld schuift zo dat het model erboven staat. */
+  insetBottom = 0;
+
+  /** Deel van de hoogte dat vrij is (voor kadering). */
+  protected freeFraction(): number {
+    const h = Math.max(1, this.host.clientHeight);
+    return Math.max(0.35, (h - this.insetBottom) / h);
+  }
+
+  private applyViewOffset() {
+    const w = Math.max(1, this.host.clientWidth);
+    const h = Math.max(1, this.host.clientHeight);
+    const off = Math.min(this.insetBottom, h * 0.65) / 2;
+    if (off > 0.5) this.camera.setViewOffset(w, h, 0, off, w, h);
+    else this.camera.clearViewOffset();
+  }
+
   resize() {
     const w = Math.max(1, this.host.clientWidth);
     const h = Math.max(1, this.host.clientHeight);
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
+    this.applyViewOffset();
     this.camera.updateProjectionMatrix();
     if (this.reframeOnResize && !this.userMoved && this.lastFrame) this.frame(...this.lastFrame);
     this.invalidate();
@@ -107,7 +125,7 @@ export class Stage {
   frame(radius: number, dir = new THREE.Vector3(0.55, 0.42, 1), target = new THREE.Vector3()) {
     this.lastFrame = [radius, dir.clone(), target.clone()];
     const fov = (this.camera.fov * Math.PI) / 180;
-    const fitH = radius / Math.sin(fov / 2);
+    const fitH = radius / Math.sin(fov / 2) / this.freeFraction();
     const fitW = radius / Math.sin(Math.atan(Math.tan(fov / 2) * this.camera.aspect));
     const d = Math.max(fitH, fitW) * 1.04;
     this.controls.target.copy(target);

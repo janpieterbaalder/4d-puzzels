@@ -278,6 +278,13 @@ export class SpatialView extends Stage {
     this.frameAll();
   }
 
+  setInsetBottom(px: number) {
+    if (Math.abs(px - this.insetBottom) < 2) return;
+    this.insetBottom = px;
+    this.resize();
+    this.frameAll();
+  }
+
   /* ---------- indeling ---------- */
 
   private sliceCols(nw: number): number {
@@ -415,7 +422,7 @@ export class SpatialView extends Stage {
       }
       const fov = (this.camera.fov * Math.PI) / 180;
       const t = Math.tan(fov / 2);
-      const d = Math.max(hy / t, hx / (t * this.camera.aspect)) * 1.12 + hz;
+      const d = Math.max(hy / t / this.freeFraction(), hx / (t * this.camera.aspect)) * 1.12 + hz;
       const target = new THREE.Vector3();
       this.controls.target.copy(target);
       this.camera.position.copy(dir.clone().normalize().multiplyScalar(d));
