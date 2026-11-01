@@ -1087,6 +1087,14 @@ kbd {
   gap: 4px;
   min-width: 0;
 }
+/* Alles/Lijnen/Laag + laagkeuze: eigen rij, breekt om; de weergaveknoppen eronder blijven altijd in beeld */
+.focus-row {
+  align-self: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
 .space-tools {
   position: relative;
   flex: 1;

@@ -234,6 +234,7 @@ export function playScreen(p: PlayParams): Screen {
     gap.oninput = () => space!.setGap(Number(gap.value));
     tools.append(spinBtn, h("label", { class: "gap", title: "Ruimte tussen cellen" }, h("span", {}, "ruimte"), gap), h("button", { class: "round-btn small", title: "Camera herstellen", html: UI.camera, onclick: () => space!.resetCamera() }));
     const sdock = h("div", { class: "space-dock" });
+    const focusRow = h("div", { class: "focus-row" });
     if (D >= 3 && T.id !== "maze") {
       const ov = buildNavOverlay();
       sdock.appendChild(ov);
@@ -268,7 +269,6 @@ export function playScreen(p: PlayParams): Screen {
             }
             for (const x of fseg.querySelectorAll<HTMLElement>("button")) x.classList.toggle("on", x.dataset.f === m);
             lseg.hidden = m !== "board";
-            if (!lseg.hidden) revealTool(lseg);
             applyFocus();
           },
         }, label);
@@ -297,7 +297,7 @@ export function playScreen(p: PlayParams): Screen {
         );
       }
       lseg.hidden = focusMode !== "board";
-      tools.prepend(fseg, lseg);
+      focusRow.append(fseg, lseg);
     }
     // gereedschapsrij: op smalle schermen horizontaal scrollbaar, met ‹ › als er meer knoppen buiten beeld staan
     const row = h("div", { class: "tools-row" });
@@ -313,16 +313,8 @@ export function playScreen(p: PlayParams): Screen {
     const toolsRO = new ResizeObserver(updateHints);
     toolsRO.observe(tools);
     cleanups.push(() => toolsRO.disconnect());
-    revealTool = (el: HTMLElement) => {
-      requestAnimationFrame(() => {
-        const l = el.offsetLeft - 8;
-        const r = el.offsetLeft + el.offsetWidth + 8;
-        if (l < tools.scrollLeft) tools.scrollTo({ left: l, behavior: "smooth" });
-        else if (r > tools.scrollLeft + tools.clientWidth) tools.scrollTo({ left: r - tools.clientWidth, behavior: "smooth" });
-        updateHints();
-      });
-    };
     row.append(leftBtn, tools, rightBtn);
+    if (focusRow.childElementCount) sdock.appendChild(focusRow);
     sdock.appendChild(row);
     spacePane.appendChild(sdock);
     requestAnimationFrame(updateHints);
@@ -431,7 +423,6 @@ export function playScreen(p: PlayParams): Screen {
   const dpad: { a: number; d: number; b: HTMLButtonElement }[] = [];
   const navBtns: { a: number; d: number; b: HTMLButtonElement }[] = [];
   let focusMode: "all" | "lines" | "board" = "all";
-  let revealTool: (el: HTMLElement) => void = () => {};
   /** Welke laag oplicht in Laag-modus: de vaste as (0 = diepte/x, 1 = liggend/y, 2 = staand/z, 3 = binnen/w: de hele kubus). */
   let layerAxis = 2;
   let focusKey = "";
