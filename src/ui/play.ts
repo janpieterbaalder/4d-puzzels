@@ -233,9 +233,10 @@ export function playScreen(p: PlayParams): Screen {
     const gap = h("input", { type: "range", min: "0", max: "1.2", step: "0.05", value: String(space.gap), title: "Ruimte tussen cellen" }) as HTMLInputElement;
     gap.oninput = () => space!.setGap(Number(gap.value));
     tools.append(spinBtn, h("label", { class: "gap", title: "Ruimte tussen cellen" }, h("span", {}, "ruimte"), gap), h("button", { class: "round-btn small", title: "Camera herstellen", html: UI.camera, onclick: () => space!.resetCamera() }));
+    const sdock = h("div", { class: "space-dock" });
     if (D >= 3 && T.id !== "maze") {
       const ov = buildNavOverlay();
-      spacePane.appendChild(ov);
+      sdock.appendChild(ov);
       const navT = h("button", {
         class: "round-btn small" + (ov.hidden ? "" : " on"),
         title: "Navigatiepijlen tonen/verbergen",
@@ -245,6 +246,7 @@ export function playScreen(p: PlayParams): Screen {
           ov.hidden = !ov.hidden;
           store.setSettings({ navPad: !ov.hidden });
           navT.classList.toggle("on", !ov.hidden);
+          space?.resetCamera();
         },
       });
       tools.appendChild(navT);
@@ -272,7 +274,12 @@ export function playScreen(p: PlayParams): Screen {
       }
       tools.prepend(fseg);
     }
-    spacePane.appendChild(tools);
+    sdock.appendChild(tools);
+    spacePane.appendChild(sdock);
+    // model boven de knoppen centreren: ondermarge = hoogte van het onderste dock
+    const insetRO = new ResizeObserver(() => space?.setInsetBottom(sdock.offsetHeight + 12));
+    insetRO.observe(sdock);
+    cleanups.push(() => insetRO.disconnect());
     if (D === 4 && store.settings().autoRotate) {
       space.setAutoRotate(true);
       spinBtn.classList.add("on");
