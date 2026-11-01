@@ -10,7 +10,7 @@ import { FlatBoard } from "../view/flat";
 import { AXIS_COLORS } from "../view/math4d";
 import { LAYOUT_LABEL, layoutsFor, SpatialView, type Layout } from "../view/spatial";
 import { webglAvailable } from "../view/stage";
-import { confetti, dimBadge, fmtTime, h, type Screen, toast, UI } from "./dom";
+import { askConfirm, confetti, dimBadge, fmtTime, h, type Screen, toast, UI } from "./dom";
 import { stepHref } from "./nav";
 
 export interface PlayParams {
@@ -416,8 +416,8 @@ export function playScreen(p: PlayParams): Screen {
     if (hnt && hnt.cells.length && game.input === "number") sel = hnt.cells[0];
     renderAll(false);
   }
-  function doReset() {
-    if (!confirm("Deze puzzel opnieuw beginnen?")) return;
+  async function doReset() {
+    if (!(await askConfirm("Deze puzzel opnieuw beginnen?", "Opnieuw beginnen"))) return;
     snapshot();
     void generatePuzzle(p.type, p.preset, p.seed).then((data) => {
       const g2 = T.create(data, { fog: p.fog });

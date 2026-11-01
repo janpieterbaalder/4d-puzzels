@@ -77,6 +77,27 @@ export function toast(msg: string, kind: "info" | "good" | "warn" = "info", ms =
   }, ms);
 }
 
+/** Bevestigingsdialoog in de pagina zelf (window.confirm is niet overal beschikbaar). */
+export function askConfirm(msg: string, ok = "Ja", cancel = "Annuleren"): Promise<boolean> {
+  return new Promise((resolve) => {
+    const close = (v: boolean) => {
+      dlg.remove();
+      resolve(v);
+    };
+    const dlg = h(
+      "div",
+      { class: "modal", onclick: (e: Event) => e.target === dlg && close(false) },
+      h(
+        "div",
+        { class: "sheet confirm" },
+        h("p", { class: "confirm-msg" }, msg),
+        h("div", { class: "solved-actions" }, h("button", { class: "btn ghost", onclick: () => close(false) }, cancel), h("button", { class: "btn primary", onclick: () => close(true) }, ok)),
+      ),
+    );
+    document.body.appendChild(dlg);
+  });
+}
+
 export function confetti(host: HTMLElement) {
   const colors = ["#ff7a8a", "#5ef2b4", "#6cb8ff", "#d77bff", "#ffd166"];
   const box = h("div", { class: "confetti" });

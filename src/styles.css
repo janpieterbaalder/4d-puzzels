@@ -2257,3 +2257,12 @@ details.rules:not([open]) summary {
     transition-duration: 0.01ms !important;
   }
 }
+
+.sheet.confirm {
+  width: min(400px, 100%);
+  text-align: center;
+}
+.confirm-msg {
+  margin: 6px 0 4px;
+  font-size: 17px;
+}

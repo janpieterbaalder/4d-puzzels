@@ -1,5 +1,5 @@
 import { store, type Settings } from "../core/store";
-import { h, type Screen, UI } from "./dom";
+import { askConfirm, h, type Screen, UI } from "./dom";
 
 export function settingsScreen(): Screen {
   const s = store.settings();
@@ -28,8 +28,8 @@ export function settingsScreen(): Screen {
         "button",
         {
           class: "btn ghost danger",
-          onclick: () => {
-            if (confirm("Alle voortgang en opgeslagen puzzels wissen?")) {
+          onclick: async () => {
+            if (await askConfirm("Alle voortgang en opgeslagen puzzels wissen?", "Wissen")) {
               store.resetAll();
               location.hash = "#/";
             }
