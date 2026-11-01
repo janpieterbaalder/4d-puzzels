@@ -45,7 +45,7 @@ Voortgang wordt alleen lokaal in de browser bewaard (`localStorage`).
 - **Bord**: plat "bord-van-borden". 3D = een rij borden (z), 4D = een raster van borden (kolommen = z, rijen = w). Beweeg over een cel: lichtsporen in vier kleuren tonen de lijnen erdoor, ook door andere borden heen.
 - **Ruimte** (three.js): kubus / lagen voor 3D; tesseract-projectie (met echte 4D-rotatie in het xw- en zw-vlak), plakjes en borden voor 4D, met geanimeerde overgangen.
 
-- **Navigeren in 3D/4D**: in de ruimte-weergave staan onderaan gecentreerd twee kleine pijlkruisen: links binnen het bord (x/y, met in het midden Wissel/Druk), rechts tussen de borden (z links/rechts, w boven/onder, met ↺). Zo bereik je ook binnenste cellen; *Lijnen* of *Laag* toont alleen de lijnen of het bord van de gekozen cel. Het selectiekader is altijd zichtbaar, ook achter andere cellen. In het platte bord is elke cel direct aan te tikken.
+- **Navigeren in 3D/4D**: in de ruimte-weergave staan onderaan gecentreerd twee kleine pijlkruisen: links binnen het bord (x/y, met in het midden Wissel/Druk), rechts tussen de borden (z links/rechts, w boven/onder, met ↺). Zo bereik je ook binnenste cellen; *Lijnen* of *Laag* toont alleen de lijnen of de laag van de gekozen cel; bij *Laag* kies je liggend (y vast), staand (z vast, zoals de borden) of diepte (x vast). Het selectiekader is altijd zichtbaar, ook achter andere cellen. In het platte bord is elke cel direct aan te tikken.
 
 Toetsen: pijltjes bewegen in het bord, `Shift` + `←`/`→` naar het bord links/rechts (z), `Shift` + `↑`/`↓` naar het bord erboven/eronder (w). Cijfers invullen met `1`–`9`, `Ctrl`+`Z` terug, `H` hint.
 
