@@ -45,6 +45,8 @@ Voortgang wordt alleen lokaal in de browser bewaard (`localStorage`).
 - **Bord**: plat "bord-van-borden". 3D = een rij borden (z), 4D = een raster van borden (kolommen = z, rijen = w). Beweeg over een cel: lichtsporen in vier kleuren tonen de lijnen erdoor, ook door andere borden heen.
 - **Ruimte** (three.js): kubus / lagen voor 3D; tesseract-projectie (met echte 4D-rotatie in het xw- en zw-vlak), plakjes en borden voor 4D, met geanimeerde overgangen.
 
+- **Navigeren in 3D/4D**: pijlknoppen per as (x, y, z, w) verplaatsen de gekozen cel door het hele rooster, ook naar binnenste cellen; met *Wissel/Druk* of het cijferblok vul je hem in. In de ruimte-weergave toont *Lijnen* of *Laag* alleen de lijnen of het bord van de gekozen cel, zodat binnenste cellen zichtbaar en aanklikbaar worden. Het selectiekader is altijd zichtbaar, ook achter andere cellen.
+
 Toetsen: pijltjes bewegen in het bord, `Shift` + `←`/`→` naar het bord links/rechts (z), `Shift` + `↑`/`↓` naar het bord erboven/eronder (w). Cijfers invullen met `1`–`9`, `Ctrl`+`Z` terug, `H` hint.
 
 ## Puzzelgeneratie

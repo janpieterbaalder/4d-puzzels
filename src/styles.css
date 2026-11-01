@@ -2301,3 +2301,40 @@ details.rules:not([open]) summary {
     padding-top: 0;
   }
 }
+
+/* navigatiepijlen voor 3D/4D */
+.navpad .dkey {
+  min-width: 46px;
+}
+.navpad .dkey:disabled {
+  opacity: 0.25;
+}
+.navpad .navgo,
+.navpad .navback {
+  --c: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.navpad .navgo {
+  min-width: 72px;
+}
+.dock.nav-off .navpad {
+  display: none;
+}
+.focus-seg button {
+  min-width: 0;
+}
+@media (max-width: 560px) {
+  .navpad {
+    gap: 6px;
+  }
+  .navpad .dgrp {
+    padding: 3px;
+  }
+  .navpad .dkey {
+    min-width: 40px;
+    height: 40px;
+    padding: 0 6px;
+    font-size: 14px;
+  }
+}

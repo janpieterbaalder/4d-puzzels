@@ -147,7 +147,8 @@ export class SpatialView extends Stage {
     });
 
     const boxEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.08, 1.08, 1.08));
-    this.selBox = new THREE.LineSegments(boxEdges, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95 }));
+    this.selBox = new THREE.LineSegments(boxEdges, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, depthTest: false }));
+    this.selBox.renderOrder = 20;
     this.hoverBox = new THREE.LineSegments(boxEdges, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 }));
     this.selBox.visible = this.hoverBox.visible = false;
     this.group.add(this.selBox, this.hoverBox);

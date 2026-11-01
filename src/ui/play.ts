@@ -195,6 +195,7 @@ export function playScreen(p: PlayParams): Screen {
     if (D === 4 && game.grid.count > 100) space.setLayout("slices", false);
     space.setVisual((i) => visualWithErrors(i));
     space.setSelected(sel);
+    focusKey = "";
     // gereedschap
     const layouts = layoutsFor(D);
     const tools = h("div", { class: "space-tools" });
@@ -227,6 +228,31 @@ export function playScreen(p: PlayParams): Screen {
     const gap = h("input", { type: "range", min: "0", max: "1.2", step: "0.05", value: String(space.gap), title: "Ruimte tussen cellen" }) as HTMLInputElement;
     gap.oninput = () => space!.setGap(Number(gap.value));
     tools.append(spinBtn, h("label", { class: "gap", title: "Ruimte tussen cellen" }, h("span", {}, "ruimte"), gap), h("button", { class: "round-btn small", title: "Camera herstellen", html: UI.camera, onclick: () => space!.resetCamera() }));
+    if (D >= 3 && T.id !== "maze") {
+      const fseg = h("div", { class: "seg small focus-seg", title: "Focus op de gekozen cel" });
+      for (const [m, label, title] of [
+        ["all", "Alles", "Toon alle cellen"],
+        ["lines", "Lijnen", "Toon alleen de lijnen door de gekozen cel"],
+        ["board", "Laag", "Toon alleen het bord (de laag) van de gekozen cel"],
+      ] as const) {
+        const b = h("button", {
+          "data-f": m,
+          title,
+          class: m === focusMode ? "on" : "",
+          onclick: () => {
+            focusMode = m;
+            if (m !== "all" && sel < 0) {
+              sel = firstFreeCell();
+              paintSel();
+            }
+            for (const x of fseg.querySelectorAll<HTMLElement>("button")) x.classList.toggle("on", x.dataset.f === m);
+            applyFocus();
+          },
+        }, label);
+        fseg.appendChild(b);
+      }
+      tools.prepend(fseg);
+    }
     spacePane.appendChild(tools);
     if (D === 4 && store.settings().autoRotate) {
       space.setAutoRotate(true);
@@ -327,6 +353,9 @@ export function playScreen(p: PlayParams): Screen {
   /* ---------- dock ---------- */
   const padBtns: HTMLButtonElement[] = [];
   const dpad: { a: number; d: number; b: HTMLButtonElement }[] = [];
+  const navBtns: { a: number; d: number; b: HTMLButtonElement }[] = [];
+  let focusMode: "all" | "lines" | "board" = "all";
+  let focusKey = "";
   function buildDock() {
     dock.innerHTML = "";
     const actions = h("div", { class: "actions" });
@@ -381,8 +410,64 @@ export function playScreen(p: PlayParams): Screen {
       }
       dock.append(pad, actions);
     } else {
-      dock.append(h("p", { class: "dock-tip" }, game.input === "press" ? "Tik op een cel om te drukken." : "Tik om te wisselen · rechtsklik of lang drukken om terug te gaan."), actions);
+      const touch = matchMedia("(pointer: coarse)").matches;
+      const tip =
+        game.input === "press"
+          ? "Tik op een cel om te drukken."
+          : D >= 3
+            ? touch
+              ? "Tik om te wisselen · ↺ wisselt terug."
+              : "Klik om te wisselen · rechtsklik of ↺ wisselt terug."
+            : touch
+              ? "Tik om te wisselen."
+              : "Klik om te wisselen · rechtsklik wisselt terug.";
+      dock.append(h("p", { class: "dock-tip" }, tip), actions);
     }
+    if (D >= 3 && game.input !== "move") {
+      const nav = buildNavPad();
+      dock.insertBefore(nav, actions);
+      const toggle = act(UI.arrows, "Pijlen", () => {
+        const on = !store.settings().navPad;
+        store.setSettings({ navPad: on });
+        dock.classList.toggle("nav-off", !on);
+        toggle.classList.toggle("on", on);
+      });
+      toggle.classList.toggle("on", store.settings().navPad);
+      dock.classList.toggle("nav-off", !store.settings().navPad);
+      actions.appendChild(toggle);
+    }
+  }
+
+  /** Pijlen per as om de gekozen cel door het hele rooster te bewegen, ook naar binnenste cellen. */
+  function buildNavPad(): HTMLElement {
+    const nav = h("div", { class: "dpad navpad", role: "group", "aria-label": "Navigeren" });
+    const glyph = [
+      ["←", "→"],
+      ["↑", "↓"],
+      ["z −", "z +"],
+      ["w −", "w +"],
+    ];
+    const tip = [
+      ["links (x−)", "rechts (x+)"],
+      ["omhoog (y−)", "omlaag (y+)"],
+      ["bord links / laag ervoor (z−)", "bord rechts / laag erachter (z+)"],
+      ["bord erboven: ana (w−)", "bord eronder: kata (w+)"],
+    ];
+    for (let a = 0; a < D; a++) {
+      const grp = h("div", { class: "dgrp", style: `--c:${AXIS_COLORS[a]}` }, h("b", {}, AX[a]));
+      for (const d of [-1, 1]) {
+        const b = h("button", { class: "dkey", title: tip[a][d < 0 ? 0 : 1], "aria-label": tip[a][d < 0 ? 0 : 1], onclick: () => moveSel(a, d) }, glyph[a][d < 0 ? 0 : 1]) as HTMLButtonElement;
+        navBtns.push({ a, d, b });
+        grp.appendChild(b);
+      }
+      nav.appendChild(grp);
+    }
+    if (game.input === "cycle" || game.input === "press") {
+      const go = h("button", { class: "dkey navgo", title: "Spatie", onclick: () => sel >= 0 && onCell(sel, 0) }, game.input === "press" ? "Druk" : "Wissel");
+      nav.appendChild(go);
+      if (game.input === "cycle") nav.appendChild(h("button", { class: "dkey navback", title: "Terug wisselen", "aria-label": "Terug wisselen", onclick: () => sel >= 0 && onCell(sel, 2) }, "↺"));
+    }
+    return nav;
   }
 
   /* ---------- acties ---------- */
@@ -507,18 +592,58 @@ export function playScreen(p: PlayParams): Screen {
   }
 
   function moveSel(a: number, d: number) {
-    if (a >= D) return;
-    if (sel < 0) sel = 0;
+    if (a >= D || !game) return;
+    if (sel < 0) {
+      sel = firstFreeCell();
+      sfx.tap();
+      paintSel();
+      revealSel();
+      return;
+    }
     const m = game.grid.step(sel, a, d);
     if (m >= 0) {
       sel = m;
+      sfx.step(a);
       paintSel();
-    }
+      revealSel();
+    } else sfx.bump();
+  }
+
+  function firstFreeCell(): number {
+    for (let i = 0; i < game.grid.count; i++) if (!game.isFixed?.(i)) return i;
+    return 0;
+  }
+
+  function revealSel() {
+    flat.cellEl(sel)?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+  }
+
+  /** Focus in de 3D-weergave: alleen de lijnen of de laag van de gekozen cel volledig tonen. */
+  function applyFocus() {
+    if (!space) return;
+    const key = focusMode + ":" + sel;
+    if (key === focusKey) return;
+    focusKey = key;
+    const g = game.grid;
+    if (focusMode === "all" || sel < 0) space.setFilter(null);
+    else if (focusMode === "lines")
+      space.setFilter((i) => {
+        let diff = 0;
+        for (let a = 0; a < g.D; a++) if (g.c(i, a) !== g.c(sel, a)) diff++;
+        return diff <= 1;
+      });
+    else
+      space.setFilter((i) => {
+        for (let a = 2; a < g.D; a++) if (g.c(i, a) !== g.c(sel, a)) return false;
+        return true;
+      });
   }
 
   function paintSel() {
     flat.setSelected(sel);
     space?.setSelected(sel);
+    for (const { a, d, b } of navBtns) b.disabled = sel >= 0 && game.grid.step(sel, a, d) < 0;
+    applyFocus();
     // toetsenblok: dim onmogelijke cijfers
     if (padBtns.length && sel >= 0 && game.peers) {
       const used = new Set<number>();
