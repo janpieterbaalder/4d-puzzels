@@ -91,6 +91,7 @@ export class SpatialView extends Stage {
   private filter: ((i: number) => boolean) | null = null;
   private pulseT = 0;
   private radius = 4;
+  reframeOnResize = false; // eigen indeling-afhankelijke kadering
   onPick: ((i: number, button: number) => void) | null = null;
   onHover: ((i: number) => void) | null = null;
 

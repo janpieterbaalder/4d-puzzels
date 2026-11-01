@@ -62,6 +62,7 @@ export class Stage {
     this.controls.rotateSpeed = 0.8;
     this.controls.enabled = opts.interactive !== false;
     this.controls.addEventListener("change", () => this.invalidate());
+    this.controls.addEventListener("start", () => (this.userMoved = true));
 
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(host);
@@ -87,17 +88,24 @@ export class Stage {
     return () => this.tickers.delete(fn);
   }
 
+  private lastFrame: [number, THREE.Vector3, THREE.Vector3] | null = null;
+  /** Bij formaatwijziging opnieuw kaderen (alleen zolang de gebruiker de camera niet zelf verplaatste). */
+  reframeOnResize = true;
+  private userMoved = false;
+
   resize() {
     const w = Math.max(1, this.host.clientWidth);
     const h = Math.max(1, this.host.clientHeight);
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    if (this.reframeOnResize && !this.userMoved && this.lastFrame) this.frame(...this.lastFrame);
     this.invalidate();
   }
 
   /** Camera zo plaatsen dat een bol met straal r rond het midden in beeld past. */
   frame(radius: number, dir = new THREE.Vector3(0.55, 0.42, 1), target = new THREE.Vector3()) {
+    this.lastFrame = [radius, dir.clone(), target.clone()];
     const fov = (this.camera.fov * Math.PI) / 180;
     const fitH = radius / Math.sin(fov / 2);
     const fitW = radius / Math.sin(Math.atan(Math.tan(fov / 2) * this.camera.aspect));

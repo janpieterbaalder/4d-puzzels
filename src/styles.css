@@ -383,7 +383,7 @@ kbd {
   position: relative;
 }
 .hero-canvas {
-  position: fixed;
+  position: absolute;
   right: -6vw;
   top: 0;
   width: min(62vw, 900px);
@@ -406,10 +406,17 @@ kbd {
   padding: 0 clamp(18px, 4vw, 48px) 40px;
 }
 .home-head {
+  position: relative;
+  z-index: 2;
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding-left: clamp(18px, 4vw, 48px);
+  padding-right: clamp(18px, 4vw, 48px);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: max(18px, env(safe-area-inset-top)) 0 10px;
+  padding-top: max(18px, env(safe-area-inset-top));
+  padding-bottom: 10px;
 }
 .wordmark {
   font-family: var(--display);
@@ -2265,4 +2272,22 @@ details.rules:not([open]) summary {
 .confirm-msg {
   margin: 6px 0 4px;
   font-size: 17px;
+}
+
+/* Telefoon staand: tesseract gecentreerd, als eigen blok tussen kop en tekst (geen laag onder de inhoud) */
+@media (max-width: 900px) and (orientation: portrait) {
+  .hero-canvas {
+    position: relative;
+    right: auto;
+    top: auto;
+    width: 100%;
+    height: min(46vh, 108vw);
+    margin: -6px 0 -10px;
+    opacity: 1;
+    mask-image: radial-gradient(closest-side, black 72%, transparent);
+    -webkit-mask-image: radial-gradient(closest-side, black 72%, transparent);
+  }
+  .home .hero {
+    padding-top: 0;
+  }
 }
