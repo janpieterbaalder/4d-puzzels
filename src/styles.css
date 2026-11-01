@@ -2225,8 +2225,44 @@ details.rules:not([open]) summary {
     grid-template-columns: 1fr;
   }
   .play-main {
-    height: 64vh;
-    min-height: 360px;
+    /* spelvlak vult het scherm tussen kop- en knoppenbalk; spelregels pas daaronder */
+    height: calc(100vh - var(--chrome, 150px) - 10px);
+    height: calc(100dvh - var(--chrome, 150px) - 10px);
+    min-height: 300px;
+  }
+  .play-body {
+    padding-bottom: 14px;
+  }
+  /* 3D-gereedschap in één smalle, veegbare rij */
+  .space-tools {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    gap: 6px;
+  }
+  .space-tools::-webkit-scrollbar {
+    display: none;
+  }
+  .space-tools > * {
+    flex: none;
+  }
+  .space-tools .gap span {
+    display: none;
+  }
+  .space-tools .gap {
+    padding: 0 10px;
+  }
+  .space-tools .gap input {
+    width: 64px;
+  }
+  .navpad3d {
+    top: 8px;
+    right: 8px;
+    padding: 5px;
+    gap: 6px;
   }
   .side {
     overflow: visible;

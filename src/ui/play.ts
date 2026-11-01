@@ -86,6 +86,11 @@ export function playScreen(p: PlayParams): Screen {
     }
   }, 1000);
   cleanups.push(() => clearInterval(tick));
+  // hoogte van kop- en knoppenbalk bijhouden: op telefoons vult het spelvlak de rest van het scherm
+  const chromeRO = new ResizeObserver(() => root.style.setProperty("--chrome", `${top.offsetHeight + dock.offsetHeight}px`));
+  chromeRO.observe(top);
+  chromeRO.observe(dock);
+  cleanups.push(() => chromeRO.disconnect());
 
   function save() {
     if (!game || solved) return;
