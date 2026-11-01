@@ -16,16 +16,16 @@ export function homeScreen(): Screen {
   const root = h(
     "div",
     { class: "screen home" },
+    h(
+      "header",
+      { class: "home-head" },
+      h("div", { class: "wordmark", html: "Puzzel<sup>4</sup>" }),
+      h("a", { class: "round-btn", href: "#/instellingen", "aria-label": "Instellingen", html: UI.settings }),
+    ),
     hero,
     h(
       "div",
       { class: "home-inner" },
-      h(
-        "header",
-        { class: "home-head" },
-        h("div", { class: "wordmark", html: "Puzzel<sup>4</sup>" }),
-        h("a", { class: "round-btn", href: "#/instellingen", "aria-label": "Instellingen", html: UI.settings }),
-      ),
       h(
         "section",
         { class: "hero" },
