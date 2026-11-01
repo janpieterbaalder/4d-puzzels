@@ -268,6 +268,7 @@ export function playScreen(p: PlayParams): Screen {
             }
             for (const x of fseg.querySelectorAll<HTMLElement>("button")) x.classList.toggle("on", x.dataset.f === m);
             lseg.hidden = m !== "board";
+            if (!lseg.hidden) revealTool(lseg);
             applyFocus();
           },
         }, label);
@@ -298,8 +299,33 @@ export function playScreen(p: PlayParams): Screen {
       lseg.hidden = focusMode !== "board";
       tools.prepend(fseg, lseg);
     }
-    sdock.appendChild(tools);
+    // gereedschapsrij: op smalle schermen horizontaal scrollbaar, met ‹ › als er meer knoppen buiten beeld staan
+    const row = h("div", { class: "tools-row" });
+    const scrollBy = (dir: number) => tools.scrollBy({ left: dir * Math.max(120, tools.clientWidth * 0.6), behavior: "smooth" });
+    const leftBtn = h("button", { class: "tools-more l", "aria-label": "Meer knoppen links", title: "Meer knoppen links", onclick: () => scrollBy(-1) }, "‹");
+    const rightBtn = h("button", { class: "tools-more r", "aria-label": "Meer knoppen rechts", title: "Meer knoppen rechts", onclick: () => scrollBy(1) }, "›");
+    const updateHints = () => {
+      const max = tools.scrollWidth - tools.clientWidth;
+      row.classList.toggle("can-l", tools.scrollLeft > 2);
+      row.classList.toggle("can-r", max - tools.scrollLeft > 2);
+    };
+    tools.addEventListener("scroll", updateHints, { passive: true });
+    const toolsRO = new ResizeObserver(updateHints);
+    toolsRO.observe(tools);
+    cleanups.push(() => toolsRO.disconnect());
+    revealTool = (el: HTMLElement) => {
+      requestAnimationFrame(() => {
+        const l = el.offsetLeft - 8;
+        const r = el.offsetLeft + el.offsetWidth + 8;
+        if (l < tools.scrollLeft) tools.scrollTo({ left: l, behavior: "smooth" });
+        else if (r > tools.scrollLeft + tools.clientWidth) tools.scrollTo({ left: r - tools.clientWidth, behavior: "smooth" });
+        updateHints();
+      });
+    };
+    row.append(leftBtn, tools, rightBtn);
+    sdock.appendChild(row);
     spacePane.appendChild(sdock);
+    requestAnimationFrame(updateHints);
     // model boven de knoppen centreren: ondermarge = hoogte van het onderste dock
     const insetRO = new ResizeObserver(() => space?.setInsetBottom(sdock.offsetHeight + 12));
     insetRO.observe(sdock);
@@ -405,6 +431,7 @@ export function playScreen(p: PlayParams): Screen {
   const dpad: { a: number; d: number; b: HTMLButtonElement }[] = [];
   const navBtns: { a: number; d: number; b: HTMLButtonElement }[] = [];
   let focusMode: "all" | "lines" | "board" = "all";
+  let revealTool: (el: HTMLElement) => void = () => {};
   /** Welke laag oplicht in Laag-modus: de vaste as (0 = diepte/x, 1 = liggend/y, 2 = staand/z, 3 = binnen/w: de hele kubus). */
   let layerAxis = 2;
   let focusKey = "";
@@ -444,29 +471,9 @@ export function playScreen(p: PlayParams): Screen {
       actions.prepend(pen, autoB);
       dock.append(pad, actions);
     } else if (game.input === "move") {
-      const pad = h("div", { class: "dpad" });
-      const glyph = [
-        ["←", "→"],
-        ["↑", "↓"],
-        ["‹", "›"],
-        ["˄", "˅"],
-      ];
-      const tip = [
-        ["links (x−)", "rechts (x+)"],
-        ["omhoog (y−)", "omlaag (y+)"],
-        ["bord links (z−)", "bord rechts (z+)"],
-        ["bord erboven: ana (w−)", "bord eronder: kata (w+)"],
-      ];
-      for (let a = 0; a < D; a++) {
-        const grp = h("div", { class: "dgrp", style: `--c:${AXIS_COLORS[a]}` }, h("b", {}, AX[a]));
-        for (const d of [-1, 1]) {
-          const t = tip[a][d < 0 ? 0 : 1];
-          const b = h("button", { class: "dkey", title: t, "aria-label": t, onclick: () => doMove(a, d) }, glyph[a][d < 0 ? 0 : 1]) as HTMLButtonElement;
-          dpad.push({ a, d, b });
-          grp.appendChild(b);
-        }
-        pad.appendChild(grp);
-      }
+      // doolhof: dezelfde pijlkruisen als in de 3D-weergave, hier om de lichtbol te bewegen
+      const pad = buildCrosses("move");
+      pad.classList.add("in-dock");
       dock.append(pad, actions);
     } else {
       dock.append(actions);
@@ -478,10 +485,26 @@ export function playScreen(p: PlayParams): Screen {
    * (z = bord links/rechts, w = bord boven/onder, zoals in de platte weergave). Kost geen ruimte in de balk.
    */
   function buildNavOverlay(): HTMLElement {
-    const ov = h("div", { class: "navpad3d", role: "group", "aria-label": "Navigeren door het rooster" });
+    const ov = buildCrosses("nav");
+    ov.hidden = !store.settings().navPad;
+    return ov;
+  }
+
+  /**
+   * Twee pijlkruisen, overal gelijk: links x/y (binnen het bord), rechts z (‹ ›, bord links/rechts)
+   * en w (˄ ˅, bord boven/onder). "nav" verplaatst de gekozen cel, "move" de lichtbol in het doolhof.
+   */
+  function buildCrosses(kind: "nav" | "move"): HTMLElement {
+    const ov = h("div", { class: "navpad3d", role: "group", "aria-label": kind === "move" ? "Lopen door het doolhof" : "Navigeren door het rooster" });
     const btn = (a: number, d: number, glyph: string, title: string, area: string) => {
-      const b = h("button", { class: "nb", style: `--c:${AXIS_COLORS[a]};grid-area:${area}`, title, "aria-label": title, onclick: () => moveSel(a, d) }, glyph) as HTMLButtonElement;
-      navBtns.push({ a, d, b });
+      const b = h("button", {
+        class: "nb",
+        style: `--c:${AXIS_COLORS[a]};grid-area:${area}`,
+        title,
+        "aria-label": title,
+        onclick: () => (kind === "move" ? doMove(a, d) : moveSel(a, d)),
+      }, glyph) as HTMLButtonElement;
+      (kind === "move" ? dpad : navBtns).push({ a, d, b });
       return b;
     };
     const xy = h(
@@ -492,17 +515,19 @@ export function playScreen(p: PlayParams): Screen {
       btn(0, 1, "→", "rechts (x+)", "e"),
       btn(1, 1, "↓", "omlaag (y+)", "s"),
     );
-    if (game.input === "cycle" || game.input === "press") {
+    if (kind === "nav" && (game.input === "cycle" || game.input === "press")) {
       xy.appendChild(
         h("button", { class: "nb go", style: "grid-area:c", title: game.input === "press" ? "Druk (spatie)" : "Wissel (spatie)", "aria-label": game.input === "press" ? "Druk" : "Wissel", onclick: () => sel >= 0 && onCell(sel, 0) }, "●"),
       );
     } else xy.appendChild(h("span", { class: "cl", style: "grid-area:c" }, "xy"));
-    const zw = h("div", { class: "cross" }, btn(2, -1, "‹", "bord links / laag ervoor (z−)", "w"), btn(2, 1, "›", "bord rechts / laag erachter (z+)", "e"));
-    if (D >= 4) zw.append(btn(3, -1, "˄", "bord erboven: ana (w−)", "n"), btn(3, 1, "˅", "bord eronder: kata (w+)", "s"));
-    if (game.input === "cycle") zw.appendChild(h("button", { class: "nb back", style: "grid-area:c", title: "Terug wisselen", "aria-label": "Terug wisselen", onclick: () => sel >= 0 && onCell(sel, 2) }, "↺"));
-    else zw.appendChild(h("span", { class: "cl", style: "grid-area:c" }, D >= 4 ? "zw" : "z"));
-    ov.append(xy, zw);
-    ov.hidden = !store.settings().navPad;
+    ov.appendChild(xy);
+    if (D >= 3) {
+      const zw = h("div", { class: "cross" }, btn(2, -1, "‹", "bord links / laag ervoor (z−)", "w"), btn(2, 1, "›", "bord rechts / laag erachter (z+)", "e"));
+      if (D >= 4) zw.append(btn(3, -1, "˄", "bord erboven: ana (w−)", "n"), btn(3, 1, "˅", "bord eronder: kata (w+)", "s"));
+      if (kind === "nav" && game.input === "cycle") zw.appendChild(h("button", { class: "nb back", style: "grid-area:c", title: "Terug wisselen", "aria-label": "Terug wisselen", onclick: () => sel >= 0 && onCell(sel, 2) }, "↺"));
+      else zw.appendChild(h("span", { class: "cl", style: "grid-area:c" }, D >= 4 ? "zw" : "z"));
+      ov.appendChild(zw);
+    }
     return ov;
   }
 

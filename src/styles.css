@@ -1079,17 +1079,40 @@ kbd {
 .space-dock > * {
   pointer-events: auto;
 }
-.space-tools {
+.tools-row {
   position: relative;
   align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.space-tools {
+  position: relative;
+  flex: 1;
+  min-width: 0;
   display: flex;
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
-  pointer-events: none;
 }
-.space-tools > * {
-  pointer-events: auto;
+.tools-more {
+  display: none;
+  flex: none;
+  width: 26px;
+  height: 34px;
+  border-radius: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text);
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+}
+.tools-row.can-l .tools-more.l,
+.tools-row.can-r .tools-more.r {
+  display: grid;
+  place-items: center;
 }
 .space-tools .gap {
   display: inline-flex;
@@ -2256,8 +2279,23 @@ details.rules:not([open]) summary {
   .space-tools {
     flex-wrap: nowrap;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     gap: 6px;
+  }
+  .tools-row.can-r .space-tools {
+    -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent);
+    mask-image: linear-gradient(90deg, #000 88%, transparent);
+  }
+  .tools-row.can-l .space-tools {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%);
+    mask-image: linear-gradient(90deg, transparent, #000 12%);
+  }
+  .tools-row.can-l.can-r .space-tools {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
   }
   .space-tools::-webkit-scrollbar {
     display: none;
@@ -2441,4 +2479,17 @@ details.rules:not([open]) summary {
     min-width: 36px;
     padding: 0 6px;
   }
+}
+
+/* pijlkruisen in de knoppenbalk (doolhof): zelfde ontwerp, compacter, naast de actieknoppen */
+.navpad3d.in-dock {
+  --nb: 29px;
+  padding: 4px;
+  gap: 6px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.navpad3d.in-dock .nb {
+  font-size: 14px;
+  border-radius: 8px;
 }
