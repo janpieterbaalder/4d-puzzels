@@ -275,11 +275,13 @@ export function playScreen(p: PlayParams): Screen {
       }
       // oriëntatie van de oplichtende laag
       const lseg = h("div", { class: "seg small layer-seg", title: "Welke laag oplicht" });
-      for (const [ax, label, title] of [
+      const layerOpts: [number, string, string][] = [
         [1, "Liggend", "Horizontale laag (y vast)"],
         [2, "Staand", "Staande laag recht van voren, zoals de borden (z vast)"],
         [0, "Diepte", "Staande laag die de diepte in loopt (x vast)"],
-      ] as const) {
+      ];
+      if (D >= 4) layerOpts.push([3, "Binnen", "De hele kubus van de gekozen cel (w vast): in de tesseract de binnen- of buitenkubus"]);
+      for (const [ax, label, title] of layerOpts) {
         lseg.appendChild(
           h("button", {
             "data-ax": ax,
@@ -403,7 +405,7 @@ export function playScreen(p: PlayParams): Screen {
   const dpad: { a: number; d: number; b: HTMLButtonElement }[] = [];
   const navBtns: { a: number; d: number; b: HTMLButtonElement }[] = [];
   let focusMode: "all" | "lines" | "board" = "all";
-  /** Welke laag oplicht in Laag-modus: de vaste as (0 = diepte/x, 1 = liggend/y, 2 = staand/z). */
+  /** Welke laag oplicht in Laag-modus: de vaste as (0 = diepte/x, 1 = liggend/y, 2 = staand/z, 3 = binnen/w: de hele kubus). */
   let layerAxis = 2;
   let focusKey = "";
   function buildDock() {
@@ -669,7 +671,11 @@ export function playScreen(p: PlayParams): Screen {
     else
       space.setFilter((i) => {
         // de laag door de gekozen cel: de gekozen as vast, en in 4D ook w (binnen dezelfde kubus)
-        for (let a = 0; a < g.D; a++) if ((a === layerAxis || a >= 3) && g.c(i, a) !== g.c(sel, a)) return false;
+        // "Binnen" (4D): alleen w vast → de hele kubus van de gekozen cel (in de tesseract een binnen- of buitenkubus)
+        for (let a = 0; a < g.D; a++) {
+          const fixed = layerAxis === 3 ? a === 3 : a === layerAxis || a >= 3;
+          if (fixed && g.c(i, a) !== g.c(sel, a)) return false;
+        }
         return true;
       });
   }
