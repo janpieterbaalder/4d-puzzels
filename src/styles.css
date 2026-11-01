@@ -1087,22 +1087,45 @@ kbd {
   gap: 4px;
   min-width: 0;
 }
-/* Alles/Lijnen/Laag + laagkeuze: eigen rij, breekt om; de weergaveknoppen eronder blijven altijd in beeld */
-.focus-row {
-  align-self: stretch;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
+/* alle 3D-opties in één veegbare regel (telefoon én desktop) */
 .space-tools {
   position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.space-tools::-webkit-scrollbar {
+  display: none;
+}
+.space-tools > * {
+  flex: none;
+}
+.tools-row.can-r .space-tools {
+  -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, #000 88%, transparent);
+}
+.tools-row.can-l .space-tools {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%);
+  mask-image: linear-gradient(90deg, transparent, #000 12%);
+}
+.tools-row.can-l.can-r .space-tools {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+/* laagkeuze staat er altijd; gedimd zolang "Laag" niet aan staat */
+.layer-seg.inactive {
+  opacity: 0.55;
+}
+.layer-seg.inactive button.on {
+  background: rgba(255, 255, 255, 0.06);
 }
 .tools-more {
   display: none;
@@ -2295,33 +2318,6 @@ details.rules:not([open]) summary {
     right: 8px;
     bottom: 8px;
     gap: 6px;
-  }
-  .space-tools {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    touch-action: pan-x;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    gap: 6px;
-  }
-  .tools-row.can-r .space-tools {
-    -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent);
-    mask-image: linear-gradient(90deg, #000 88%, transparent);
-  }
-  .tools-row.can-l .space-tools {
-    -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%);
-    mask-image: linear-gradient(90deg, transparent, #000 12%);
-  }
-  .tools-row.can-l.can-r .space-tools {
-    -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-    mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-  }
-  .space-tools::-webkit-scrollbar {
-    display: none;
-  }
-  .space-tools > * {
-    flex: none;
   }
   .space-tools .gap span {
     display: none;
