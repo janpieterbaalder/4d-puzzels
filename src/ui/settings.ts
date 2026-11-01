@@ -24,6 +24,8 @@ export function settingsScreen(): Screen {
       row("showErrors", "Fouten tonen", "Markeer cellen die met een regel in strijd zijn."),
       row("rails", "Lichtsporen", "Toon de lijnen (x, y, z, w) door de cel onder je muis."),
       row("autoRotate", "4D-draai bij start", "Laat de tesseract-weergave vanzelf in 4D draaien."),
+      row("padDone", "Klare cijfers dimmen", "Een cijfer op het toetsenblok wordt lichter zodra het in de hele puzzel vaak genoeg staat."),
+      row("padPeers", "Onmogelijke cijfers dimmen", "Hulp: dimt ook cijfers die al bij een buur van de gekozen cel staan."),
       row("navPad", "Navigatiepijlen in de 3D-weergave", "Zwevende pijlkruisen om de gekozen cel langs x, y, z en w te verplaatsen, ook naar binnenste cellen."),
       h(
         "button",

@@ -701,13 +701,35 @@ export function playScreen(p: PlayParams): Screen {
     space?.setSelected(sel);
     for (const { a, d, b } of navBtns) b.disabled = sel >= 0 && game.grid.step(sel, a, d) < 0;
     applyFocus();
-    // toetsenblok: dim onmogelijke cijfers
-    if (padBtns.length && sel >= 0 && game.peers) {
-      const used = new Set<number>();
-      const vals = (game as any).vals as Int8Array | undefined;
-      if (vals) for (const q of game.peers(sel)) if (vals[q]) used.add(vals[q]);
-      padBtns.forEach((b, k) => b.classList.toggle("used", used.has(k + 1)));
+    updatePad();
+  }
+
+  /**
+   * Toetsenblok: een cijfer wordt lichter als het in de hele puzzel al vaak genoeg staat (instelling "padDone",
+   * standaard aan). Optioneel ook als het al bij een buur van de gekozen cel staat (instelling "padPeers", standaard uit).
+   */
+  function updatePad() {
+    if (!padBtns.length) return;
+    const st = store.settings();
+    const vals = (game as any).vals as Int8Array | undefined;
+    const sol = (game as any).solution as Int8Array | undefined;
+    const used = new Set<number>();
+    if (st.padPeers && vals && sel >= 0 && game.peers) for (const q of game.peers(sel)) if (vals[q]) used.add(vals[q]);
+    const done = new Set<number>();
+    if (st.padDone && vals && sol) {
+      const need = new Array(padBtns.length + 1).fill(0);
+      const have = new Array(padBtns.length + 1).fill(0);
+      for (let i = 0; i < sol.length; i++) {
+        need[sol[i]]++;
+        if (vals[i]) have[vals[i]]++;
+      }
+      for (let v = 1; v <= padBtns.length; v++) if (need[v] > 0 && have[v] >= need[v]) done.add(v);
     }
+    padBtns.forEach((b, k) => {
+      b.classList.toggle("done", done.has(k + 1));
+      b.classList.toggle("used", !done.has(k + 1) && used.has(k + 1));
+      b.title = done.has(k + 1) ? "Dit cijfer staat overal" : "";
+    });
   }
 
   function renderAll(fromAction = true) {
