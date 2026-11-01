@@ -229,6 +229,20 @@ export function playScreen(p: PlayParams): Screen {
     gap.oninput = () => space!.setGap(Number(gap.value));
     tools.append(spinBtn, h("label", { class: "gap", title: "Ruimte tussen cellen" }, h("span", {}, "ruimte"), gap), h("button", { class: "round-btn small", title: "Camera herstellen", html: UI.camera, onclick: () => space!.resetCamera() }));
     if (D >= 3 && T.id !== "maze") {
+      const ov = buildNavOverlay();
+      spacePane.appendChild(ov);
+      const navT = h("button", {
+        class: "round-btn small" + (ov.hidden ? "" : " on"),
+        title: "Navigatiepijlen tonen/verbergen",
+        "aria-label": "Navigatiepijlen tonen of verbergen",
+        html: UI.arrows,
+        onclick: () => {
+          ov.hidden = !ov.hidden;
+          store.setSettings({ navPad: !ov.hidden });
+          navT.classList.toggle("on", !ov.hidden);
+        },
+      });
+      tools.appendChild(navT);
       const fseg = h("div", { class: "seg small focus-seg", title: "Focus op de gekozen cel" });
       for (const [m, label, title] of [
         ["all", "Alles", "Toon alle cellen"],
@@ -360,7 +374,7 @@ export function playScreen(p: PlayParams): Screen {
     dock.innerHTML = "";
     const actions = h("div", { class: "actions" });
     const act = (icon: string, label: string, fn: () => void, extra = "") =>
-      h("button", { class: "action " + extra, html: icon + `<span>${label}</span>`, onclick: fn, "aria-label": label });
+      h("button", { class: "action " + extra, html: icon + `<span>${label}</span>`, onclick: fn, "aria-label": label, title: label });
     actions.append(
       act(UI.undo, "Terug", doUndo),
       act(UI.redo, "Opnieuw", doRedo),
@@ -396,13 +410,20 @@ export function playScreen(p: PlayParams): Screen {
       const glyph = [
         ["←", "→"],
         ["↑", "↓"],
-        ["‹ z", "z ›"],
-        ["ana", "kata"],
+        ["‹", "›"],
+        ["˄", "˅"],
+      ];
+      const tip = [
+        ["links (x−)", "rechts (x+)"],
+        ["omhoog (y−)", "omlaag (y+)"],
+        ["bord links (z−)", "bord rechts (z+)"],
+        ["bord erboven: ana (w−)", "bord eronder: kata (w+)"],
       ];
       for (let a = 0; a < D; a++) {
         const grp = h("div", { class: "dgrp", style: `--c:${AXIS_COLORS[a]}` }, h("b", {}, AX[a]));
         for (const d of [-1, 1]) {
-          const b = h("button", { class: "dkey", onclick: () => doMove(a, d) }, glyph[a][d < 0 ? 0 : 1]) as HTMLButtonElement;
+          const t = tip[a][d < 0 ? 0 : 1];
+          const b = h("button", { class: "dkey", title: t, "aria-label": t, onclick: () => doMove(a, d) }, glyph[a][d < 0 ? 0 : 1]) as HTMLButtonElement;
           dpad.push({ a, d, b });
           grp.appendChild(b);
         }
@@ -410,64 +431,41 @@ export function playScreen(p: PlayParams): Screen {
       }
       dock.append(pad, actions);
     } else {
-      const touch = matchMedia("(pointer: coarse)").matches;
-      const tip =
-        game.input === "press"
-          ? "Tik op een cel om te drukken."
-          : D >= 3
-            ? touch
-              ? "Tik om te wisselen · ↺ wisselt terug."
-              : "Klik om te wisselen · rechtsklik of ↺ wisselt terug."
-            : touch
-              ? "Tik om te wisselen."
-              : "Klik om te wisselen · rechtsklik wisselt terug.";
-      dock.append(h("p", { class: "dock-tip" }, tip), actions);
-    }
-    if (D >= 3 && game.input !== "move") {
-      const nav = buildNavPad();
-      dock.insertBefore(nav, actions);
-      const toggle = act(UI.arrows, "Pijlen", () => {
-        const on = !store.settings().navPad;
-        store.setSettings({ navPad: on });
-        dock.classList.toggle("nav-off", !on);
-        toggle.classList.toggle("on", on);
-      });
-      toggle.classList.toggle("on", store.settings().navPad);
-      dock.classList.toggle("nav-off", !store.settings().navPad);
-      actions.appendChild(toggle);
+      dock.append(actions);
     }
   }
 
-  /** Pijlen per as om de gekozen cel door het hele rooster te bewegen, ook naar binnenste cellen. */
-  function buildNavPad(): HTMLElement {
-    const nav = h("div", { class: "dpad navpad", role: "group", "aria-label": "Navigeren" });
-    const glyph = [
-      ["←", "→"],
-      ["↑", "↓"],
-      ["z −", "z +"],
-      ["w −", "w +"],
-    ];
-    const tip = [
-      ["links (x−)", "rechts (x+)"],
-      ["omhoog (y−)", "omlaag (y+)"],
-      ["bord links / laag ervoor (z−)", "bord rechts / laag erachter (z+)"],
-      ["bord erboven: ana (w−)", "bord eronder: kata (w+)"],
-    ];
-    for (let a = 0; a < D; a++) {
-      const grp = h("div", { class: "dgrp", style: `--c:${AXIS_COLORS[a]}` }, h("b", {}, AX[a]));
-      for (const d of [-1, 1]) {
-        const b = h("button", { class: "dkey", title: tip[a][d < 0 ? 0 : 1], "aria-label": tip[a][d < 0 ? 0 : 1], onclick: () => moveSel(a, d) }, glyph[a][d < 0 ? 0 : 1]) as HTMLButtonElement;
-        navBtns.push({ a, d, b });
-        grp.appendChild(b);
-      }
-      nav.appendChild(grp);
-    }
+  /**
+   * Zwevende pijlkruisen in de 3D-weergave: links binnen het bord (x/y), rechts tussen de borden
+   * (z = bord links/rechts, w = bord boven/onder, zoals in de platte weergave). Kost geen ruimte in de balk.
+   */
+  function buildNavOverlay(): HTMLElement {
+    const ov = h("div", { class: "navpad3d", role: "group", "aria-label": "Navigeren door het rooster" });
+    const btn = (a: number, d: number, glyph: string, title: string, area: string) => {
+      const b = h("button", { class: "nb", style: `--c:${AXIS_COLORS[a]};grid-area:${area}`, title, "aria-label": title, onclick: () => moveSel(a, d) }, glyph) as HTMLButtonElement;
+      navBtns.push({ a, d, b });
+      return b;
+    };
+    const xy = h(
+      "div",
+      { class: "cross" },
+      btn(1, -1, "↑", "omhoog (y−)", "n"),
+      btn(0, -1, "←", "links (x−)", "w"),
+      btn(0, 1, "→", "rechts (x+)", "e"),
+      btn(1, 1, "↓", "omlaag (y+)", "s"),
+    );
     if (game.input === "cycle" || game.input === "press") {
-      const go = h("button", { class: "dkey navgo", title: "Spatie", onclick: () => sel >= 0 && onCell(sel, 0) }, game.input === "press" ? "Druk" : "Wissel");
-      nav.appendChild(go);
-      if (game.input === "cycle") nav.appendChild(h("button", { class: "dkey navback", title: "Terug wisselen", "aria-label": "Terug wisselen", onclick: () => sel >= 0 && onCell(sel, 2) }, "↺"));
-    }
-    return nav;
+      xy.appendChild(
+        h("button", { class: "nb go", style: "grid-area:c", title: game.input === "press" ? "Druk (spatie)" : "Wissel (spatie)", "aria-label": game.input === "press" ? "Druk" : "Wissel", onclick: () => sel >= 0 && onCell(sel, 0) }, "●"),
+      );
+    } else xy.appendChild(h("span", { class: "cl", style: "grid-area:c" }, "xy"));
+    const zw = h("div", { class: "cross" }, btn(2, -1, "‹", "bord links / laag ervoor (z−)", "w"), btn(2, 1, "›", "bord rechts / laag erachter (z+)", "e"));
+    if (D >= 4) zw.append(btn(3, -1, "˄", "bord erboven: ana (w−)", "n"), btn(3, 1, "˅", "bord eronder: kata (w+)", "s"));
+    if (game.input === "cycle") zw.appendChild(h("button", { class: "nb back", style: "grid-area:c", title: "Terug wisselen", "aria-label": "Terug wisselen", onclick: () => sel >= 0 && onCell(sel, 2) }, "↺"));
+    else zw.appendChild(h("span", { class: "cl", style: "grid-area:c" }, D >= 4 ? "zw" : "z"));
+    ov.append(xy, zw);
+    ov.hidden = !store.settings().navPad;
+    return ov;
   }
 
   /* ---------- acties ---------- */

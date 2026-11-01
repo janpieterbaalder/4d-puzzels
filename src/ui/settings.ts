@@ -24,7 +24,7 @@ export function settingsScreen(): Screen {
       row("showErrors", "Fouten tonen", "Markeer cellen die met een regel in strijd zijn."),
       row("rails", "Lichtsporen", "Toon de lijnen (x, y, z, w) door de cel onder je muis."),
       row("autoRotate", "4D-draai bij start", "Laat de tesseract-weergave vanzelf in 4D draaien."),
-      row("navPad", "Navigatiepijlen in 3D/4D", "Knoppen om de gekozen cel langs x, y, z en w te verplaatsen, ook naar binnenste cellen."),
+      row("navPad", "Navigatiepijlen in de 3D-weergave", "Zwevende pijlkruisen om de gekozen cel langs x, y, z en w te verplaatsen, ook naar binnenste cellen."),
       h(
         "button",
         {
