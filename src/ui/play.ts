@@ -234,7 +234,6 @@ export function playScreen(p: PlayParams): Screen {
     gap.oninput = () => space!.setGap(Number(gap.value));
     tools.append(spinBtn, h("label", { class: "gap", title: "Ruimte tussen cellen" }, h("span", {}, "ruimte"), gap), h("button", { class: "round-btn small", title: "Camera herstellen", html: UI.camera, onclick: () => space!.resetCamera() }));
     const sdock = h("div", { class: "space-dock" });
-    const focusRow = h("div", { class: "focus-row" });
     if (D >= 3 && T.id !== "maze") {
       const ov = buildNavOverlay();
       sdock.appendChild(ov);
@@ -268,7 +267,7 @@ export function playScreen(p: PlayParams): Screen {
               paintSel();
             }
             for (const x of fseg.querySelectorAll<HTMLElement>("button")) x.classList.toggle("on", x.dataset.f === m);
-            lseg.hidden = m !== "board";
+            lseg.classList.toggle("inactive", m !== "board");
             applyFocus();
           },
         }, label);
@@ -291,13 +290,16 @@ export function playScreen(p: PlayParams): Screen {
             onclick: () => {
               layerAxis = ax;
               for (const x of lseg.querySelectorAll<HTMLElement>("button")) x.classList.toggle("on", Number(x.dataset.ax) === ax);
-              applyFocus();
+              // een laag kiezen zet de focus vanzelf op "Laag"
+              if (focusMode !== "board") (fseg.querySelector('button[data-f="board"]') as HTMLElement).click();
+              else applyFocus();
             },
           }, label),
         );
       }
-      lseg.hidden = focusMode !== "board";
-      focusRow.append(fseg, lseg);
+      lseg.classList.toggle("inactive", focusMode !== "board");
+      // alles in één veegbare regel: focus, laag, daarna weergave en de rest
+      tools.prepend(fseg, lseg);
     }
     // gereedschapsrij: op smalle schermen horizontaal scrollbaar, met ‹ › als er meer knoppen buiten beeld staan
     const row = h("div", { class: "tools-row" });
@@ -314,7 +316,6 @@ export function playScreen(p: PlayParams): Screen {
     toolsRO.observe(tools);
     cleanups.push(() => toolsRO.disconnect());
     row.append(leftBtn, tools, rightBtn);
-    if (focusRow.childElementCount) sdock.appendChild(focusRow);
     sdock.appendChild(row);
     spacePane.appendChild(sdock);
     requestAnimationFrame(updateHints);
