@@ -1,0 +1,23 @@
+{
+  "name": "puzzel4",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Puzzel⁴ — speels leren denken in vier dimensies",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.187.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}
