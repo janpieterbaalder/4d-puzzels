@@ -1364,6 +1364,18 @@ details.rules:not([open]) summary {
 .key.used {
   opacity: 0.4;
 }
+.key.done {
+  position: relative;
+  opacity: 0.32;
+}
+.key.done::after {
+  content: "✓";
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 10px;
+  color: var(--good);
+}
 .pad.pencil .key:not(.erase) {
   font-size: 15px;
   color: var(--accent);

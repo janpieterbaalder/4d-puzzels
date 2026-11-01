@@ -24,11 +24,13 @@ export interface Settings {
   rails: boolean;
   autoRotate: boolean;
   navPad: boolean;
+  padDone: boolean;
+  padPeers: boolean;
 }
 
 export const store = {
   settings(): Settings {
-    return { sound: true, showErrors: true, rails: true, autoRotate: false, navPad: true, ...read<Partial<Settings>>("settings", {}) };
+    return { sound: true, showErrors: true, rails: true, autoRotate: false, navPad: true, padDone: true, padPeers: false, ...read<Partial<Settings>>("settings", {}) };
   },
   setSettings(s: Partial<Settings>) {
     write("settings", { ...store.settings(), ...s });
