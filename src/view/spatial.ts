@@ -29,6 +29,8 @@ export interface SpatialOptions {
   accent?: string;
   labelColor?: string;
   tintByW?: boolean;
+  /** Volle kubussen zonder tone mapping: kleuren blijven even verzadigd als op het platte bord (Tectonic-gebieden). */
+  vivid?: boolean;
 }
 
 const tmpM = new THREE.Matrix4();
@@ -37,6 +39,7 @@ const tmpV = new THREE.Vector3();
 const tmpS = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
 const tmpC = new THREE.Color();
+const VIVID = { roughness: 0.6, clearcoat: 0.0, env: 0.45, specular: 0.3, gain: 0.68 };
 
 function cssColor(c: string | undefined, fallback: string): THREE.Color {
   const s = c ?? fallback;
@@ -110,13 +113,18 @@ export class SpatialView extends Stage {
     this.scene.add(this.group);
 
     const geo = new RoundedBoxGeometry(0.9, 0.9, 0.9, 3, 0.16);
+    const vivid = !!opts.vivid;
     const solidMat = new THREE.MeshPhysicalMaterial({
       color: 0xffffff,
-      roughness: 0.28,
-      metalness: 0.05,
-      clearcoat: 0.8,
-      clearcoatRoughness: 0.2,
-      envMapIntensity: 1.1,
+      roughness: vivid ? VIVID.roughness : 0.28,
+      metalness: vivid ? 0 : 0.05,
+      clearcoat: vivid ? VIVID.clearcoat : 0.8,
+      clearcoatRoughness: vivid ? 0.4 : 0.2,
+      envMapIntensity: vivid ? VIVID.env : 1.1,
+      // weinig witte glans: die maakt de kleuren anders pastel
+      specularIntensity: vivid ? VIVID.specular : 1,
+      // ACES-tone mapping maakt verzadigde kleuren pastel; voor gebiedskleuren uitzetten
+      toneMapped: !vivid,
     });
     const glassMat = new THREE.MeshPhysicalMaterial({
       color: 0xffffff,
@@ -462,7 +470,8 @@ export class SpatialView extends Stage {
       if (hl) col.lerp(cssColor(hl, "#fff"), 0.55);
       if (v.error) col.set("#ff4d5e");
       if (filtered) col.lerp(new THREE.Color("#30364d"), 0.7);
-      this.solid.setColorAt(i, col);
+      // zonder tone mapping lopen belichte vlakken anders over naar wit; basiskleur iets temperen
+      this.solid.setColorAt(i, this.opts.vivid ? tmpC.copy(col).multiplyScalar(VIVID.gain) : col);
       this.glass.setColorAt(i, col);
 
       // label / icoon
@@ -470,7 +479,11 @@ export class SpatialView extends Stage {
       if (!filtered && kind) {
         if (v.icon) tex = iconTexture(v.icon, v.iconColor ?? "#ffffff");
         else if (v.text) {
-          const color = v.error ? "#ffd1d6" : v.given ? "#ffffff" : v.tone === "solid" || v.tone === "dark" ? "#ffffff" : accent;
+          // op een volle, lichte kubus (bv. Tectonic-gebieden) donkere cijfers; anders licht
+          const srgb = col.clone().convertLinearToSRGB();
+          const lum = 0.2126 * srgb.r + 0.7152 * srgb.g + 0.0722 * srgb.b;
+          const lightSolid = v.tone === "solid" && !v.error && lum > 0.5;
+          const color = v.error ? "#ffd1d6" : lightSolid ? "#0e1020" : v.given ? "#ffffff" : v.tone === "solid" || v.tone === "dark" ? "#ffffff" : accent;
           tex = labelTexture(v.text, color, v.given ? 800 : 600);
         }
       }
@@ -645,7 +658,8 @@ export class SpatialView extends Stage {
       const s = this.scl[i] * (this.visuals[i]?.dim ? 0.7 : 1);
       const dir = tmpV.copy(cam).sub(p).normalize();
       const solid = this.kind[i] === 1;
-      sp.position.copy(p).addScaledVector(dir, solid ? s * 0.52 : s * 0.05);
+      // op volle kubussen het label vóór de dichtstbijzijnde hoek (√3 · halve ribbe ≈ 0.78) zetten
+      sp.position.copy(p).addScaledVector(dir, solid ? s * 0.82 : s * 0.05);
     }
     for (const h of this.halos) {
       if (!h.visible) continue;

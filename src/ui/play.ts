@@ -191,6 +191,7 @@ export function playScreen(p: PlayParams): Screen {
       accent: T.accent,
       cellScale: T.id === "maze" ? 0.42 : 1,
       tintByW: true,
+      vivid: T.id === "tectonic",
     });
     space.autoRotate = false;
     space.onPick = (i, b) => onCell(i, b);
