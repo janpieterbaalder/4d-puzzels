@@ -2509,3 +2509,8 @@ details.rules:not([open]) summary {
   font-size: 14px;
   border-radius: 8px;
 }
+
+/* opties op gekleurde (volle) cellen leesbaar houden, bv. Tectonic */
+.cell.t-solid .notes {
+  color: rgba(10, 12, 28, 0.78);
+}

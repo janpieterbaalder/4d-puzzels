@@ -113,13 +113,80 @@ function generate(preset: Preset, seed: string): TecData {
   throw new Error("tectonic generatie mislukt");
 }
 
-function hexA(hex: string, a: number): string {
+/**
+ * Twaalf duidelijk verschillende, heldere kleuren (donkere cijfers blijven leesbaar).
+ * Afwisselend warm/koel geordend zodat ook weinig gebieden al ver uiteen liggen.
+ */
+export const REGION_COLORS = [
+  "#ff6b6b", // rood
+  "#4dabf7", // blauw
+  "#ffd43b", // geel
+  "#9775fa", // paars
+  "#69db7c", // groen
+  "#ff922b", // oranje
+  "#3bc9db", // cyaan
+  "#f783ac", // roze
+  "#c0eb75", // limoen
+  "#a5b4fc", // lavendel
+  "#e8a87c", // zand
+  "#20c997", // turquoise
+];
+
+function rgb(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-/** Zachte regio-tinten, toegewezen zodat buur-regio's verschillen. */
-const TINTS = ["#5ef2b4", "#6cb8ff", "#ffb547", "#ff7eb6", "#c99bff", "#b6f36a", "#4fe3ff", "#ff9a6b"];
+/** Ruwe waargenomen kleurafstand (gewogen RGB, 'redmean'). */
+function colorDist(a: string, b: string): number {
+  const [r1, g1, b1] = rgb(a);
+  const [r2, g2, b2] = rgb(b);
+  const rm = (r1 + r2) / 2;
+  const dr = r1 - r2,
+    dg = g1 - g2,
+    db = b1 - b2;
+  return Math.sqrt((2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db);
+}
+
+/**
+ * Kleur de gebieden (DSatur): buurgebieden krijgen nooit dezelfde kleur, en uit de vrije kleuren
+ * kiezen we de kleur die het verst afligt van de kleuren van de buren (bij gelijkstand: de minst gebruikte).
+ */
+export function colorRegions(groups: number[][], adj: Set<number>[]): number[] {
+  const P = REGION_COLORS.length;
+  const col = new Array(groups.length).fill(-1);
+  const usage = new Array(P).fill(0);
+  for (let done = 0; done < groups.length; done++) {
+    let best = -1;
+    let bestSat = -1;
+    let bestDeg = -1;
+    for (let r = 0; r < groups.length; r++) {
+      if (col[r] >= 0) continue;
+      const sat = new Set([...adj[r]].map((q) => col[q]).filter((c) => c >= 0)).size;
+      if (sat > bestSat || (sat === bestSat && adj[r].size > bestDeg)) {
+        best = r;
+        bestSat = sat;
+        bestDeg = adj[r].size;
+      }
+    }
+    const nbCols = [...adj[best]].map((q) => col[q]).filter((c) => c >= 0);
+    let pick = -1;
+    let pickScore = -Infinity;
+    for (let c = 0; c < P; c++) {
+      if (nbCols.includes(c)) continue;
+      const minD = nbCols.length ? Math.min(...nbCols.map((q) => colorDist(REGION_COLORS[c], REGION_COLORS[q]))) : 999;
+      const score = minD - usage[c] * 25;
+      if (score > pickScore) {
+        pickScore = score;
+        pick = c;
+      }
+    }
+    if (pick < 0) pick = usage.indexOf(Math.min(...usage));
+    col[best] = pick;
+    usage[pick]++;
+  }
+  return col;
+}
 
 class TectonicGame extends CspGame {
   grid: Grid;
@@ -132,24 +199,11 @@ class TectonicGame extends CspGame {
     this.grid = new Grid(data.sizes);
     this.init(data.givens, data.solution);
     this.groups = regionGroups(data.region);
-    // kleur regio's met een gulzige graafkleuring
+    // kleur de gebieden zo dat buren duidelijk verschillen (ook over borden heen, in 3D/4D)
     const adj = this.groups.map(() => new Set<number>());
     for (let i = 0; i < this.grid.count; i++)
       for (const j of this.grid.orth(i)) if (data.region[i] !== data.region[j]) adj[data.region[i]].add(data.region[j]);
-    const col: number[] = [];
-    this.groups.forEach((_, r) => {
-      const used = new Set([...adj[r]].map((q) => col[q]).filter((x) => x !== undefined));
-      let c = r % TINTS.length;
-      for (let k = 0; k < TINTS.length; k++) {
-        const cand = (r * 3 + k) % TINTS.length;
-        if (!used.has(cand)) {
-          c = cand;
-          break;
-        }
-      }
-      col[r] = c;
-    });
-    this.tint = col.map((c) => hexA(TINTS[c], 0.42));
+    this.tint = colorRegions(this.groups, adj).map((c) => REGION_COLORS[c]);
   }
   protected buildCSP() {
     return buildCSP(this.grid, this.data.region, this.data.diagonal);
@@ -164,7 +218,7 @@ class TectonicGame extends CspGame {
     const v = this.baseVisual(i);
     v.region = this.data.region[i];
     v.fill = this.tint[this.data.region[i]];
-    v.tone = "glass";
+    v.tone = "solid";
     return v;
   }
   peers(i: number) {
