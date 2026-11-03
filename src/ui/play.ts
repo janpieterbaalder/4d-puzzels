@@ -333,7 +333,8 @@ export function playScreen(p: PlayParams): Screen {
   function visibleLinks(): [number, number][] {
     const all = game.links?.() ?? [];
     if (!game.fog) return all;
-    return all.filter(([a, b]) => !game.visual(a).hidden && !game.visual(b).hidden);
+    // ook doorgangen naar een verborgen laag (de ruimte toont die als stompje)
+    return all.filter(([a, b]) => !game.visual(a).hidden || !game.visual(b).hidden);
   }
 
   function visualWithErrors(i: number) {
@@ -740,8 +741,8 @@ export function playScreen(p: PlayParams): Screen {
     flat.render();
     paintSel();
     if (space) {
-      if (game.fog && game.links) space.setLinks(visibleLinks(), T.accent);
       space.refresh();
+      if (game.fog && game.links) space.setLinks(visibleLinks(), T.accent);
     }
     for (const { a, d, b } of dpad) b.disabled = !(game as any).canMove?.(a, d);
     if (fromAction) {

@@ -9,7 +9,7 @@ Vormgeving: donker ruimtethema met glazen cellen, in dezelfde familie als Sudoku
 | Puzzel | Oorsprong | 2D | 3D | 4D | Wat leer je over 4D |
 |---|---|---|---|---|---|
 | Lichtjes | Lights Out | ✓ | ✓ | ✓ | Een cel heeft 2·D directe buren (4 → 6 → 8). |
-| Doolhof | labyrint | ✓ | ✓ | ✓ | Bewegen langs w; doorsnede-modus (je ziet alleen je eigen 2D-plakje). |
+| Doolhof | labyrint | ✓ | ✓ | ✓ | Bewegen langs w; doorsnede-modus: je ziet live alleen je eigen 2D-plakje, bezochte plakjes blijven zwak zichtbaar en de ster altijd. |
 | Binair | Binairo / Takuzu | ✓ | ✓ | ✓ | Door elke cel lopen D lijnen. |
 | Sudoku | sudoku / Latijns vierkant | ✓ | ✓ | ✓ | Lijnen in 4 richtingen; waarom blokken niet in alle 6 vlakken passen. |
 | Futoshiki | futoshiki | ✓ | ✓ | ✓ | Ongelijkheden die "de diepte in" of "ana/kata" wijzen. |
