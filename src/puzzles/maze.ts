@@ -257,7 +257,7 @@ export const Maze: PuzzleType = {
           : "Klik op een buurcel of gebruik de pijltjestoetsen.",
         "Toetsen: " + keys.slice(0, dim - 1).join(" · ") + ".",
         ...(dim >= 3
-          ? ["In de ruimte-weergave zijn jouw doorgangen gekleurd, net als de pijlknoppen: rood = x, groen = y, blauw = z" + (dim >= 4 ? ", paars = w." : ".")]
+          ? ["In de ruimte-weergave zijn jouw doorgangen gekleurd, net als de pijlknoppen: rood = x, groen = y, blauw = z" + (dim >= 4 ? ", paars = w" : "") + ". Tik op een gekleurd buisje of gebruik de pijlknoppen."]
           : []),
       ],
       dimNote:
