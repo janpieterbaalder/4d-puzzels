@@ -2530,17 +2530,22 @@ details.rules:not([open]) summary {
   }
 }
 
-/* pijlkruisen in de knoppenbalk (doolhof): zelfde ontwerp, compacter, naast de actieknoppen */
-.navpad3d.in-dock {
-  --nb: 29px;
-  padding: 4px;
-  gap: 6px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
+/* doolhof in de bordweergave: pijlkruisen onderaan gecentreerd in het speelvlak, zoals de 3D-kruisen */
+.board-dock {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: none;
 }
-.navpad3d.in-dock .nb {
-  font-size: 14px;
-  border-radius: 8px;
+.play-main[data-mode="board"] .board-dock {
+  display: block;
+}
+@media (max-width: 900px) {
+  .board-dock {
+    bottom: 8px;
+  }
 }
 
 /* opties op gekleurde (volle) cellen leesbaar houden, bv. Tectonic */
