@@ -182,7 +182,29 @@ export function playScreen(p: PlayParams): Screen {
 
     buildSide();
     buildDock();
+    if (game.input === "move") buildBoardDock();
     renderAll(false);
+  }
+
+  /**
+   * Doolhof: de pijlkruisen staan in het speelvlak, onderaan gecentreerd, net als de navigatiekruisen
+   * van de andere puzzels in de 3D-weergave. In de bordweergave zweven ze onder het bord.
+   */
+  /** Doolhofpijlen: alleen richtingen zonder muur zijn te kiezen. */
+  function updateDpad() {
+    for (const { a, d, b } of dpad) b.disabled = !(game as any).canMove?.(a, d);
+  }
+
+  function buildBoardDock() {
+    const bdock = h("div", { class: "board-dock" }, buildCrosses("move"));
+    main.appendChild(bdock);
+    // bord boven de kruisen centreren: ondermarge = hoogte van de kruisen
+    const ro = new ResizeObserver(() => {
+      boardPane.style.paddingBottom = bdock.offsetHeight ? `${bdock.offsetHeight + 16}px` : "";
+      flat.fit();
+    });
+    ro.observe(bdock);
+    cleanups.push(() => ro.disconnect());
   }
 
   function ensureSpace() {
@@ -236,7 +258,11 @@ export function playScreen(p: PlayParams): Screen {
     gap.oninput = () => space!.setGap(Number(gap.value));
     tools.append(spinBtn, h("label", { class: "gap", title: "Ruimte tussen cellen" }, h("span", {}, "ruimte"), gap), h("button", { class: "round-btn small", title: "Camera herstellen", html: UI.camera, onclick: () => space!.resetCamera() }));
     const sdock = h("div", { class: "space-dock" });
-    if (D >= 3 && T.id !== "maze") {
+    if (game.input === "move") {
+      sdock.appendChild(buildCrosses("move"));
+      updateDpad();
+    }
+    else if (D >= 3) {
       const ov = buildNavOverlay();
       sdock.appendChild(ov);
       const navT = h("button", {
@@ -474,11 +500,6 @@ export function playScreen(p: PlayParams): Screen {
         }
       });
       actions.prepend(pen, autoB);
-      dock.append(pad, actions);
-    } else if (game.input === "move") {
-      // doolhof: dezelfde pijlkruisen als in de 3D-weergave, hier om de lichtbol te bewegen
-      const pad = buildCrosses("move");
-      pad.classList.add("in-dock");
       dock.append(pad, actions);
     } else {
       dock.append(actions);
@@ -756,7 +777,7 @@ export function playScreen(p: PlayParams): Screen {
       if (game.fog && game.links) space.setLinks(visibleLinks(), T.accent);
       frameFog();
     }
-    for (const { a, d, b } of dpad) b.disabled = !(game as any).canMove?.(a, d);
+    updateDpad();
     if (fromAction) {
       running = true;
       save();

@@ -154,8 +154,10 @@ export class FlatBoard {
     const ny = D >= 2 ? g.n[1] : 1;
     // smal scherm + 4D: compactere borden (zie styles.css), zodat alle kolommen in beeld passen
     const compact = D === 4 && matchMedia("(max-width: 560px)").matches;
+    // ondermarge van het vlak (bv. pijlkruisen van het doolhof eronder) telt niet mee
+    const padB = parseFloat(getComputedStyle(host).paddingBottom) || 0;
     const W = host.clientWidth - (compact ? 14 : 30);
-    const H = host.clientHeight - (compact ? 14 : 30);
+    const H = host.clientHeight - padB - (compact ? 14 : 30);
     const gapRatio = this.lined ? 0 : 0.14;
     const boardPad = D === 4 ? (compact ? 5 : 8) : 11;
     const boardGap = compact ? 8 : 14;
@@ -191,7 +193,7 @@ export class FlatBoard {
     this.el.style.setProperty("--gap", Math.round(cell * gapRatio) + "px");
     // controleer de echte maat (koppen, tellingen) en krimp zo nodig
     for (let k = 0; k < 8 && cell > min; k++) {
-      const over = Math.max(this.el.scrollWidth - (host.clientWidth - 4), this.el.scrollHeight - (host.clientHeight - 4));
+      const over = Math.max(this.el.scrollWidth - (host.clientWidth - 4), this.el.scrollHeight - (host.clientHeight - padB - 4));
       if (over <= 0) break;
       const cols = D === 4 ? nz * nx : D === 3 ? Number(this.el.style.getPropertyValue("--cols") || nz) * nx : nx;
       cell = Math.max(min, cell - Math.max(1, Math.ceil(over / Math.max(cols, ny * nw))));
