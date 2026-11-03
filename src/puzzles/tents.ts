@@ -286,7 +286,7 @@ export const Tents: PuzzleType = {
       rules: [
         `Een tent staat direct naast zijn boom (één van de ${2 * dim} directe buren).`,
         "Tenten raken elkaar nergens, ook niet schuin.",
-        "Elk getal zegt hoeveel tenten er in dat hypervlak staan.",
+        `Elk getal zegt hoeveel tenten er in die ${["", "", "rij of kolom", "laag (een heel vlak van de kubus)", "3D-plak (een hele kubus)"][dim]} staan.`,
         "Klik: leeg → tent → gras → leeg.",
       ],
       dimNote:
