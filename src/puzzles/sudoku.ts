@@ -186,10 +186,10 @@ export const Sudoku: PuzzleType = {
         dim === 2
           ? `Elk blok (dik omrand) bevat 1–${n} precies één keer.`
           : planes.length === 3
-            ? "Elk 2×2-blok in elke snede — in alle drie de richtingen — bevat 1–4 één keer. Elke laag die je uit de kubus snijdt is dus een sudoku."
+            ? "Elk 2×2-blok in elke snede — in alle drie de richtingen (x–y, x–z en y–z) — bevat 1–4 één keer. Elke laag die je uit de kubus snijdt, liggend, staand of in de diepte, is dus een sudoku. Op het platte bord zie je alleen de x–y-blokken; kies een cel en de cellen die meetellen lichten op, ook in de borden ernaast."
             : hasZW
               ? "Elk bord is een sudoku met 2×2-blokken. Én: kijk je naar één vaste plek in alle 16 borden, dan vormen die 16 cellen óók een sudoku (het grote raster van borden met zijn 2×2-blokken van borden)."
-              : "Elk bord (laag) is een sudoku met 2×2-blokken.",
+              : "Elk bord (laag) is een sudoku met 2×2-blokken. Van opzij gezien (x–z en y–z) gelden alleen de lijnen; wil je ook daar blokken, kies dan de Sudokubus.",
       );
     } else r.push("Er zijn geen blokken: alleen lijnen. Dat heet een Latijnse hyperkubus.");
     r.push("Kies een cel en tik een cijfer. Met 'Potlood' noteer je opties.");

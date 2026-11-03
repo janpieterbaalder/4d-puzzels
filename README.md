@@ -25,6 +25,7 @@ Aanpassingen aan de oorspronkelijke regels (en waarom):
 
 - **Binair**: de regel "geen twee gelijke rijen" vervalt; in lijnen van lengte 4 is "geen drie op een rij" automatisch waar.
 - **Tectonic**: in 3D en 4D tellen alleen directe buren. Met de diagonaalregel zou je 8 (3D) of 16 (4D) verschillende cijfers nodig hebben, terwijl gebieden er hoogstens 5 hebben. Dit is lesstof in de cursus.
+- **Sudoku 3D**: twee varianten. *Stapelsudoku*: elk bord (x–y) is een sudoku, daarnaast alleen lijnen. *Sudokubus* (ook in de cursus): 2×2-blokken in alle drie de richtingen (x–y, x–z, y–z), dus elke snede is een sudoku.
 - **Sudoku 4D**: "Dubbele sudoku": elk bord is een sudoku, én elke vaste plek over alle 16 borden vormt ook een sudoku (blokken in het xy- en zw-vlak). Daarnaast een "Latijnse" variant zonder blokken.
 - **Zeeslag / Tentje-boompje**: de getallen tellen per *hypervlak* (rij in 2D, laag in 3D, 3D-plak in 4D).
 
