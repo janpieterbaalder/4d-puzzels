@@ -199,6 +199,7 @@ export function playScreen(p: PlayParams): Screen {
     if (game.links) space.setLinks(visibleLinks(), T.accent);
     if (game.edgeMarks) space.setMarks(game.edgeMarks());
     if (D === 4 && game.grid.count > 100) space.setLayout("slices", false);
+    frameFog();
     space.setVisual((i) => visualWithErrors(i));
     space.setSelected(sel);
     focusKey = "";
@@ -328,6 +329,16 @@ export function playScreen(p: PlayParams): Screen {
       space.setAutoRotate(true);
       spinBtn.classList.add("on");
     }
+  }
+
+  /** 4D-doorsnede: de camera kadert de eigen doorsnede in plaats van de hele (grotendeels verborgen) tesseract. */
+  function frameFog() {
+    if (!space || !game.fog || D < 4 || !game.focus) return;
+    const g = game.grid;
+    const me = game.focus();
+    const cells: number[] = [];
+    for (let i = 0; i < g.count; i++) if (g.c(i, 2) === g.c(me, 2) && g.c(i, 3) === g.c(me, 3)) cells.push(i);
+    space.setFrameCells(cells);
   }
 
   function visibleLinks(): [number, number][] {
@@ -743,6 +754,7 @@ export function playScreen(p: PlayParams): Screen {
     if (space) {
       space.refresh();
       if (game.fog && game.links) space.setLinks(visibleLinks(), T.accent);
+      frameFog();
     }
     for (const { a, d, b } of dpad) b.disabled = !(game as any).canMove?.(a, d);
     if (fromAction) {

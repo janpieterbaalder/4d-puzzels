@@ -93,7 +93,6 @@ export class SpatialView extends Stage {
   private highlight = new Map<number, string>();
   private filter: ((i: number) => boolean) | null = null;
   private pulseT = 0;
-  private radius = 4;
   reframeOnResize = false; // eigen indeling-afhankelijke kadering
   onPick: ((i: number, button: number) => void) | null = null;
   onHover: ((i: number) => void) | null = null;
@@ -288,6 +287,51 @@ export class SpatialView extends Stage {
     this.frameAll();
   }
 
+  private frameSet: number[] | null = null;
+  private frameKey = "";
+  /**
+   * Kader de camera op een deel van de cellen (bv. de eigen doorsnede in het 4D-doolhof); null = alles.
+   * Heeft de speler zelf gedraaid of gezoomd, dan schuift alleen het middelpunt mee.
+   */
+  setFrameCells(cells: number[] | null) {
+    const key = cells ? cells.join(",") : "";
+    if (key === this.frameKey) return;
+    this.frameKey = key;
+    this.frameSet = cells && cells.length ? cells : null;
+    if (this.userMoved) {
+      const c = this.frameBounds().center;
+      const delta = c.sub(this.controls.target);
+      this.controls.target.add(delta);
+      this.camera.position.add(delta);
+      this.controls.update();
+      this.invalidate();
+    } else this.frameAll();
+  }
+
+  /** Middelpunt en halve afmetingen van de (doel)posities van de gekaderde cellen. */
+  private frameBounds() {
+    const N = this.grid.count;
+    const tp = new Float32Array(N * 3);
+    const ts = new Float32Array(N);
+    const min = new THREE.Vector3(Infinity, Infinity, Infinity);
+    const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+    const cells = this.frameSet ?? [...Array(N).keys()];
+    let pad = 0;
+    for (const i of cells) {
+      this.target(i, tp, ts);
+      min.min(tmpV.set(tp[i * 3], tp[i * 3 + 1], tp[i * 3 + 2]));
+      max.max(tmpV);
+      pad = Math.max(pad, 0.6 * ts[i]);
+    }
+    const center = this.frameSet ? min.clone().add(max).multiplyScalar(0.5) : new THREE.Vector3();
+    let r = 0;
+    for (const i of cells) r = Math.max(r, Math.hypot(tp[i * 3] - center.x, tp[i * 3 + 1] - center.y, tp[i * 3 + 2] - center.z) + 0.6 * ts[i]);
+    const half = this.frameSet
+      ? max.clone().sub(min).multiplyScalar(0.5).addScalar(pad + 0.55 * (1 + this.gap)) // ruimte voor stompjes naar buren
+      : new THREE.Vector3(Math.max(Math.abs(min.x), Math.abs(max.x)), Math.max(Math.abs(min.y), Math.abs(max.y)), Math.max(Math.abs(min.z), Math.abs(max.z))).addScalar(pad);
+    return { center, half, radius: Math.max(r, 1.2) };
+  }
+
   setInsetBottom(px: number) {
     if (Math.abs(px - this.insetBottom) < 2) return;
     this.insetBottom = px;
@@ -402,40 +446,17 @@ export class SpatialView extends Stage {
     this.invalidate();
   }
 
-  private boundsRadius(): number {
-    const N = this.grid.count;
-    const tp = new Float32Array(N * 3);
-    const ts = new Float32Array(N);
-    for (let i = 0; i < N; i++) this.target(i, tp, ts);
-    let r = 0;
-    for (let i = 0; i < N; i++) r = Math.max(r, Math.hypot(tp[i * 3], tp[i * 3 + 1], tp[i * 3 + 2]) + 0.6 * ts[i]);
-    return Math.max(r, 1.2);
-  }
-
   private frameAll() {
-    this.radius = this.boundsRadius();
+    const { center, half, radius } = this.frameBounds();
     const flatish = this.layout === "flat" || this.layout === "layers" || this.layout === "boards";
     const dir = flatish ? new THREE.Vector3(0.0, -0.35, 1) : this.layout === "slices" ? new THREE.Vector3(0.3, 0.38, 1) : new THREE.Vector3(0.62, 0.48, 1);
     if (flatish || this.layout === "slices") {
       // rechthoekige omhullende: past beter dan een bol bij brede of hoge indelingen
-      const N = this.grid.count;
-      const tp = new Float32Array(N * 3);
-      const ts = new Float32Array(N);
-      let hx = 0,
-        hy = 0,
-        hz = 0;
-      for (let i = 0; i < N; i++) {
-        this.target(i, tp, ts);
-        hx = Math.max(hx, Math.abs(tp[i * 3]) + 0.6 * ts[i]);
-        hy = Math.max(hy, Math.abs(tp[i * 3 + 1]) + 0.6 * ts[i]);
-        hz = Math.max(hz, Math.abs(tp[i * 3 + 2]) + 0.6 * ts[i]);
-      }
       const fov = (this.camera.fov * Math.PI) / 180;
       const t = Math.tan(fov / 2);
-      const d = Math.max(hy / t / this.freeFraction(), hx / (t * this.camera.aspect)) * 1.12 + hz;
-      const target = new THREE.Vector3();
-      this.controls.target.copy(target);
-      this.camera.position.copy(dir.clone().normalize().multiplyScalar(d));
+      const d = Math.max(half.y / t / this.freeFraction(), half.x / (t * this.camera.aspect)) * 1.12 + half.z;
+      this.controls.target.copy(center);
+      this.camera.position.copy(dir.clone().normalize().multiplyScalar(d).add(center));
       this.camera.near = Math.max(0.05, d / 100);
       this.camera.far = d * 10;
       this.camera.updateProjectionMatrix();
@@ -443,7 +464,7 @@ export class SpatialView extends Stage {
       this.invalidate();
       return;
     }
-    this.frame(this.radius * 0.98, dir);
+    this.frame(radius * 0.98, dir, center);
   }
 
   /* ---------- stijl ---------- */
@@ -622,7 +643,9 @@ export class SpatialView extends Stage {
     this.railSegs.forEach(([p, q, ax], k) => {
       this.cellPosition(p, a);
       this.cellPosition(q, b);
-      this.placeCylinder(this.rails, k, a, b, Math.min(this.scl[p], this.scl[q]));
+      // geen lichtspoor door verborgen cellen (doorsnede-modus)
+      const hid = this.visuals[p]?.hidden || this.visuals[q]?.hidden;
+      this.placeCylinder(this.rails, k, a, b, hid ? 0 : Math.min(this.scl[p], this.scl[q]));
       this.rails.setColorAt(k, tmpC.set(AXIS_COLORS[ax]));
     });
     this.rails.instanceMatrix.needsUpdate = true;
