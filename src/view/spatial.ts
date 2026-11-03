@@ -626,12 +626,58 @@ export class SpatialView extends Stage {
       this.marks.instanceMatrix.needsUpdate = true;
     }
     this.updateRails();
+    this.placeExits();
+  }
+
+  /** Lichtsporen door de gekozen cel (alle lijnen); uit bij het doolhof, dat toont alleen echte doorgangen (setExits). */
+  railsEnabled = true;
+  private exitsMesh: THREE.InstancedMesh | null = null;
+  private exitSegs: [number, number, number][] = [];
+
+  /**
+   * Doorgangen vanaf de speler, gekleurd per as (zoals de pijlknoppen). Zo is in de tesseract, waar cellen die
+   * alleen in w verschillen bijna op elkaar liggen, meteen te zien welke buisjes echt bij de speler horen.
+   */
+  setExits(segs: [number, number, number][]) {
+    this.exitSegs = segs;
+    if (!this.exitsMesh) {
+      const geo = new THREE.CylinderGeometry(0.11, 0.11, 1, 12, 1);
+      // altijd zichtbaar (ook achter dichterbij liggende buisjes), net als het selectiekader
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.92, depthTest: false, depthWrite: false });
+      this.exitsMesh = new THREE.InstancedMesh(geo, mat, Math.max(1, 2 * this.grid.D));
+      this.exitsMesh.frustumCulled = false;
+      this.exitsMesh.renderOrder = 18;
+      for (let k = 0; k < 2 * this.grid.D; k++) this.exitsMesh.setColorAt(k, tmpC.set(0xffffff));
+      this.group.add(this.exitsMesh);
+    }
+    this.placeExits();
+    this.invalidate();
+  }
+
+  private placeExits() {
+    const m = this.exitsMesh;
+    if (!m) return;
+    const cs = this.opts.cellScale ?? 1;
+    const a = new THREE.Vector3();
+    const b = new THREE.Vector3();
+    m.count = this.exitSegs.length;
+    this.exitSegs.forEach(([p, q, ax], k) => {
+      this.cellPosition(p, a);
+      this.cellPosition(q, b);
+      const unit = this.scl[p] / cs;
+      // naar een verborgen laag: alleen het stompje
+      if (this.visuals[q]?.hidden) b.sub(a).normalize().multiplyScalar(Math.min(a.distanceTo(b) * 0.45, unit * 0.62)).add(a);
+      this.placeCylinder(m, k, a, b, unit * 1.3);
+      m.setColorAt(k, tmpC.set(AXIS_COLORS[ax]));
+    });
+    m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
   }
 
   private updateRails() {
     const g = this.grid;
     this.railSegs = [];
-    if (this.sel >= 0) {
+    if (this.sel >= 0 && this.railsEnabled) {
       for (let ax = 0; ax < g.D; ax++) {
         const line = g.lineThrough(this.sel, ax);
         for (let k = 0; k + 1 < line.length; k++) this.railSegs.push([line[k], line[k + 1], ax]);

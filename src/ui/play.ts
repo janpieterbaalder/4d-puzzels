@@ -195,6 +195,21 @@ export function playScreen(p: PlayParams): Screen {
     for (const { a, d, b } of dpad) b.disabled = !(game as any).canMove?.(a, d);
   }
 
+  /** Doolhof in de ruimte: de open doorgangen vanaf de lichtbol, gekleurd per as. */
+  function updateExits() {
+    if (!space || game.input !== "move" || !game.focus) return;
+    const g = game.grid;
+    const me = game.focus();
+    const segs: [number, number, number][] = [];
+    for (let a = 0; a < g.D; a++)
+      for (const d of [-1, 1]) {
+        if (!(game as any).canMove?.(a, d)) continue;
+        const m = g.step(me, a, d);
+        if (m >= 0) segs.push([me, m, a]);
+      }
+    space.setExits(segs);
+  }
+
   function buildBoardDock() {
     const bdock = h("div", { class: "board-dock" }, buildCrosses("move"));
     main.appendChild(bdock);
@@ -216,6 +231,8 @@ export function playScreen(p: PlayParams): Screen {
       vivid: T.id === "tectonic",
     });
     space.autoRotate = false;
+    // doolhof: geen lichtsporen door muren heen, wel de echte doorgangen in de kleur van de pijlknop (updateExits)
+    if (game.input === "move") space.railsEnabled = false;
     space.onPick = (i, b) => onCell(i, b);
     space.onHover = (i) => onHover(i);
     if (game.links) space.setLinks(visibleLinks(), T.accent);
@@ -261,6 +278,7 @@ export function playScreen(p: PlayParams): Screen {
     if (game.input === "move") {
       sdock.appendChild(buildCrosses("move"));
       updateDpad();
+      updateExits();
     }
     else if (D >= 3) {
       const ov = buildNavOverlay();
@@ -776,6 +794,7 @@ export function playScreen(p: PlayParams): Screen {
       space.refresh();
       if (game.fog && game.links) space.setLinks(visibleLinks(), T.accent);
       frameFog();
+      updateExits();
     }
     updateDpad();
     if (fromAction) {
