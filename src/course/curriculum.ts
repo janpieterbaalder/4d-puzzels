@@ -70,7 +70,7 @@ export const CHAPTERS: Chapter[] = [
       P("bi2", "binary", "2d-6"),
       P("bi3", "binary", "3d-4", { note: "Elke rij, kolom én pilaar: twee nullen en twee enen." }),
       P("su2", "sudoku", "2d-4"),
-      P("su3", "sudoku", "3d-stack", { note: "Elk bord is een sudoku, én elke pilaar door de borden heen bevat 1–4." }),
+      P("su3", "sudoku", "3d-cube", { note: "Een sudokubus: elke laag die je uit de kubus snijdt is een sudoku, liggend, staand én in de diepte. Elk 2×2-blokje telt dus in alle drie de richtingen (x–y, x–z en y–z), en elke pilaar bevat 1–4." }),
       P("su4", "sudoku", "4d-latin3", { note: "Geen blokken, alleen lijnen: in elke richting 1, 2 en 3." }),
       P("bi4", "binary", "4d-4", { note: "256 cellen, 256 lijnen. Elke lijn: twee nullen, twee enen." }),
     ],
