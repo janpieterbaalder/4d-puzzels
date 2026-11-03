@@ -279,8 +279,8 @@ export const Tectonic: PuzzleType = {
         dim === 2
           ? undefined
           : dim === 3
-            ? "Waarom tellen diagonalen hier níet mee? In 3D raken de 8 cellen van elk 2×2×2-blokje elkaar allemaal. Dan zou je minstens 8 verschillende cijfers nodig hebben, en gebieden hebben er hoogstens 5. In 3D heeft een cel 26 koningsburen."
-            : "In 4D heeft een cel 3⁴ − 1 = 80 koningsburen, en raken de 16 cellen van elk 2×2×2×2-blokje elkaar allemaal. Met de diagonaalregel zouden je minstens 16 cijfers nodig hebben. Daarom tellen alleen de 8 directe buren.",
+            ? "Waarom tellen diagonalen hier níet mee, in geen enkele richting? In 3D raken de 8 cellen van elk 2×2×2-blokje elkaar allemaal (een cel heeft 26 koningsburen). Dan zou je minstens 8 verschillende cijfers nodig hebben, en gebieden hebben er hoogstens 5. Alleen de schuine buren binnen elk vlak meetellen zou kunnen, maar dan heeft elk 2×2×2-blokje al 4 verschillende cijfers nodig; in een 4×4×4-kubus lukt dat niet meer met gebieden van hoogstens 5 cellen."
+            : "In 4D heeft een cel 3⁴ − 1 = 80 koningsburen, en raken de 16 cellen van elk 2×2×2×2-blokje elkaar allemaal: met de diagonaalregel zou je 16 cijfers nodig hebben. Zelfs als alleen de schuine buren binnen de vlakken meetellen, zijn het er nog 8. Daarom tellen in alle richtingen alleen de 8 directe buren.",
     };
   },
   generate,
