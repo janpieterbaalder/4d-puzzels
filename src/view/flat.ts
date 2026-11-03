@@ -152,12 +152,14 @@ export class FlatBoard {
     const nw = D >= 4 ? g.n[3] : 1;
     const nx = g.n[0];
     const ny = D >= 2 ? g.n[1] : 1;
-    const W = host.clientWidth - 30;
-    const H = host.clientHeight - 30;
+    // smal scherm + 4D: compactere borden (zie styles.css), zodat alle kolommen in beeld passen
+    const compact = D === 4 && matchMedia("(max-width: 560px)").matches;
+    const W = host.clientWidth - (compact ? 14 : 30);
+    const H = host.clientHeight - (compact ? 14 : 30);
     const gapRatio = this.lined ? 0 : 0.14;
-    const boardPad = D === 4 ? 8 : 11;
-    const boardGap = 14;
-    const side = D === 4 ? 40 : 0;
+    const boardPad = D === 4 ? (compact ? 5 : 8) : 11;
+    const boardGap = compact ? 8 : 14;
+    const side = D === 4 ? (compact ? 30 : 40) : 0;
     const clue = D === 2 && this.clueEls.length ? 1.2 : 0;
     const size = (cols: number, rows: number, head: number) => {
       const cellsX = cols * (nx + (nx - 1) * gapRatio) + clue;
@@ -183,7 +185,7 @@ export class FlatBoard {
       this.el.style.setProperty("--cols", String(bestCols));
     } else cell = size(nz, nw, 0);
     const coarse = matchMedia("(pointer: coarse)").matches;
-    const min = coarse ? 28 : 18;
+    const min = coarse ? (D === 4 ? 24 : 28) : 18;
     cell = Math.max(min, Math.min(D === 2 ? 66 : 58, Math.floor(cell)));
     this.el.style.setProperty("--cell", cell + "px");
     this.el.style.setProperty("--gap", Math.round(cell * gapRatio) + "px");

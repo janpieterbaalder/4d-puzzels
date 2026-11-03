@@ -1524,6 +1524,23 @@ details.rules:not([open]) summary {
 .flat.d4 .board.fogged::after {
   font-size: 9.5px;
 }
+/* 4D op een smal scherm: compacte borden (afgestemd op FlatBoard.fit) */
+@media (max-width: 560px) {
+  .flat.d4 {
+    padding: 6px;
+  }
+  .flat.d4 .flat-grid {
+    gap: 8px;
+  }
+  .flat.d4 .board {
+    padding: 4px;
+    border-radius: 10px;
+  }
+  .flat.d4 .axis-head.w {
+    font-size: 11px;
+    padding-right: 2px;
+  }
+}
 .board.with-clues {
   display: grid;
   grid-template-columns: auto auto;

@@ -91,7 +91,7 @@ export class Stage {
   private lastFrame: [number, THREE.Vector3, THREE.Vector3] | null = null;
   /** Bij formaatwijziging opnieuw kaderen (alleen zolang de gebruiker de camera niet zelf verplaatste). */
   reframeOnResize = true;
-  private userMoved = false;
+  protected userMoved = false;
 
   /** Ruimte (px) onderin die door knoppen bedekt is; het beeld schuift zo dat het model erboven staat. */
   insetBottom = 0;
