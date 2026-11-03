@@ -256,10 +256,13 @@ export const Maze: PuzzleType = {
           ? "Een gekleurd pijltje in een cel betekent: hier is een doorgang naar het volgende of vorige bord (een andere laag)."
           : "Klik op een buurcel of gebruik de pijltjestoetsen.",
         "Toetsen: " + keys.slice(0, dim - 1).join(" · ") + ".",
+        ...(dim >= 3
+          ? ["In de ruimte-weergave zijn jouw doorgangen gekleurd, net als de pijlknoppen: rood = x, groen = y, blauw = z" + (dim >= 4 ? ", paars = w." : ".")]
+          : []),
       ],
       dimNote:
         dim === 4
-          ? "Een muur die je in 3D niet om kunt, kun je in 4D soms ontwijken door even 'ana' of 'kata' te stappen: naar een parallelle kubus."
+          ? "Een muur die je in 3D niet om kunt, kun je in 4D soms ontwijken door even 'ana' of 'kata' te stappen: naar een parallelle kubus. Let op: in de tesseract liggen cellen die alleen in w verschillen bijna op elkaar. Witte buisjes vlak bij je kunnen dus van zo'n buurcel zijn; alleen de gekleurde zijn van jou."
           : dim === 3
             ? "Elk bord is één laag van de kubus. Een doorgang in de diepte brengt je naar dezelfde plek in de laag ernaast."
             : undefined,
