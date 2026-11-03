@@ -288,6 +288,7 @@ export class SpatialView extends Stage {
   }
 
   private frameSet: number[] | null = null;
+  private lastFrameRadius = 0;
   private frameKey = "";
   /**
    * Kader de camera op een deel van de cellen (bv. de eigen doorsnede in het 4D-doolhof); null = alles.
@@ -299,10 +300,16 @@ export class SpatialView extends Stage {
     this.frameKey = key;
     this.frameSet = cells && cells.length ? cells : null;
     if (this.userMoved) {
-      const c = this.frameBounds().center;
-      const delta = c.sub(this.controls.target);
-      this.controls.target.add(delta);
-      this.camera.position.add(delta);
+      // eigen draaiing houden; middelpunt en zoom schalen mee (in de tesseract verschillen doorsnedes sterk in grootte)
+      const { center, radius } = this.frameBounds();
+      const scale = this.lastFrameRadius > 0 ? radius / this.lastFrameRadius : 1;
+      const off = this.camera.position.clone().sub(this.controls.target).multiplyScalar(scale);
+      this.controls.target.copy(center);
+      this.camera.position.copy(center).add(off);
+      this.camera.near = Math.max(0.05, off.length() / 100);
+      this.camera.far = off.length() * 10;
+      this.camera.updateProjectionMatrix();
+      this.lastFrameRadius = radius;
       this.controls.update();
       this.invalidate();
     } else this.frameAll();
@@ -448,6 +455,7 @@ export class SpatialView extends Stage {
 
   private frameAll() {
     const { center, half, radius } = this.frameBounds();
+    this.lastFrameRadius = radius;
     const flatish = this.layout === "flat" || this.layout === "layers" || this.layout === "boards";
     const dir = flatish ? new THREE.Vector3(0.0, -0.35, 1) : this.layout === "slices" ? new THREE.Vector3(0.3, 0.38, 1) : new THREE.Vector3(0.62, 0.48, 1);
     if (flatish || this.layout === "slices") {
@@ -661,6 +669,9 @@ export class SpatialView extends Stage {
     const a = new THREE.Vector3();
     const b = new THREE.Vector3();
     m.count = this.exitSegs.length;
+    // kortere buisjes bovenop (zelfde volgorde als bij het aantikken)
+    const len = (x: [number, number, number]) => this.cellPosition(x[0], a).distanceTo(this.cellPosition(x[1], b));
+    this.exitSegs.sort((x, y) => len(y) - len(x));
     this.exitSegs.forEach(([p, q, ax], k) => {
       this.cellPosition(p, a);
       this.cellPosition(q, b);
@@ -767,7 +778,7 @@ export class SpatialView extends Stage {
 
   /* ---------- invoer ---------- */
 
-  private pick(ev: PointerEvent | MouseEvent): number {
+  private pick(ev: PointerEvent | MouseEvent, preferExits = false): number {
     const rect = this.renderer.domElement.getBoundingClientRect();
     const ndc = new THREE.Vector2(((ev.clientX - rect.left) / rect.width) * 2 - 1, -((ev.clientY - rect.top) / rect.height) * 2 + 1);
     const rc = new THREE.Raycaster();
@@ -776,7 +787,57 @@ export class SpatialView extends Stage {
       (h) => h.instanceId !== undefined && this.kind[h.instanceId] !== 0 && !(this.filter && !this.filter(h.instanceId)),
     );
     hits.sort((a, b) => a.distance - b.distance);
+    if (preferExits && this.exitSegs.length) {
+      // liggen cellen over elkaar (tesseract), dan telt een cel waar de speler heen kan voor
+      const targets = new Set(this.exitSegs.map((x) => x[1]));
+      const t = hits.find((h) => targets.has(h.instanceId!));
+      if (t) return t.instanceId!;
+    }
     return hits.length ? hits[0].instanceId! : -1;
+  }
+
+  /** Doorgang (doelcel) waarvan het gekleurde buisje op het scherm binnen ~26 px van de tik ligt; anders -1. */
+  private pickExit(ev: PointerEvent | MouseEvent): number {
+    if (!this.exitSegs.length || !this.exitsMesh) return -1;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const px = ev.clientX - rect.left;
+    const py = ev.clientY - rect.top;
+    const toScreen = (v: THREE.Vector3) => {
+      this.group.localToWorld(v);
+      v.project(this.camera);
+      return [((v.x + 1) / 2) * rect.width, ((1 - v.y) / 2) * rect.height];
+    };
+    const a = new THREE.Vector3();
+    const b = new THREE.Vector3();
+    const cs = this.opts.cellScale ?? 1;
+    let best = -1;
+    let bestScore = Infinity;
+    for (const [p, q] of this.exitSegs) {
+      this.cellPosition(p, a);
+      this.cellPosition(q, b);
+      if (this.visuals[q]?.hidden) b.sub(a).normalize().multiplyScalar(Math.min(a.distanceTo(b) * 0.45, (this.scl[p] / cs) * 0.62)).add(a);
+      const [ax, ay] = toScreen(a.clone());
+      const [bx, by] = toScreen(b.clone());
+      const dx = bx - ax;
+      const dy = by - ay;
+      const L2 = dx * dx + dy * dy;
+      if (L2 < 1) continue;
+      const L = Math.sqrt(L2);
+      const t = ((px - ax) * dx + (py - ay) * dy) / L2;
+      // tik op de speler zelf (begin van het buisje) telt niet; lange buisjes (naar een ander bord) zijn overal aan te tikken
+      if (t * L < Math.min(0.3 * L, 18) || t > 1.25) continue;
+      const tc = Math.min(1, t);
+      const dist = Math.hypot(px - (ax + tc * dx), py - (ay + tc * dy));
+      if (dist > 26) continue;
+      // het dichtstbijzijnde buisje wint; liggen buisjes over elkaar (in 'Plakjes' loopt w langs x), dan het
+      // kortste (dat ligt ook bovenop); een tik voorbij het einde van een buisje telt minder
+      const score = dist + (t > 1 ? 20 : 0) + 0.02 * L;
+      if (score < bestScore) {
+        bestScore = score;
+        best = q;
+      }
+    }
+    return best;
   }
 
   private bindPointer() {
@@ -792,7 +853,9 @@ export class SpatialView extends Stage {
       const b = down.b;
       down = null;
       if (moved > 6 || dt > 600 || !this.onPick) return;
-      const i = this.pick(e);
+      // doolhof: een tik op (of vlak bij) een gekleurde doorgang gaat die kant op
+      const ex = this.pickExit(e);
+      const i = ex >= 0 ? ex : this.pick(e, true);
       if (i >= 0) this.onPick(i, b);
     });
     el.addEventListener("contextmenu", (e) => e.preventDefault());

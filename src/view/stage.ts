@@ -61,8 +61,14 @@ export class Stage {
     this.controls.dampingFactor = 0.09;
     this.controls.rotateSpeed = 0.8;
     this.controls.enabled = opts.interactive !== false;
-    this.controls.addEventListener("change", () => this.invalidate());
-    this.controls.addEventListener("start", () => (this.userMoved = true));
+    // alleen echt draaien/zoomen telt als 'zelf verplaatst', niet een tik op een cel
+    let dragging = false;
+    this.controls.addEventListener("start", () => (dragging = true));
+    this.controls.addEventListener("end", () => (dragging = false));
+    this.controls.addEventListener("change", () => {
+      if (dragging) this.userMoved = true;
+      this.invalidate();
+    });
 
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(host);
