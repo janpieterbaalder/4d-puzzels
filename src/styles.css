@@ -54,6 +54,13 @@ body {
 html {
   background: #04050d;
   overscroll-behavior-y: none;
+  /* geen inzoomen bij dubbeltikken (iOS/Android); scrollen en knijp-zoomen blijven werken.
+     touch-action werkt door op alle onderliggende elementen (doorsnede met de voorouders). */
+  touch-action: manipulation;
+}
+/* ook rechtstreeks op elk element (Safari); specifiekere regels (3D-vlak: none, veegrij: pan-x) gaan voor */
+body * {
+  touch-action: manipulation;
 }
 body {
   overflow-x: hidden;
