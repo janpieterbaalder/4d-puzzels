@@ -275,6 +275,8 @@ export class SpatialView extends Stage {
     for (let i = 0; i < N; i++) this.visuals[i] = this.visualFn(i);
     this.applyStyles();
     this.writeMatrices();
+    // verbindingen hangen af van verborgen/zwakke cellen (doorsnede-modus)
+    if (this.links) this.updateSegments();
     this.invalidate();
   }
 
@@ -568,10 +570,22 @@ export class SpatialView extends Stage {
     const a = new THREE.Vector3();
     const b = new THREE.Vector3();
     if (this.links) {
+      const cs = this.opts.cellScale ?? 1;
       this.linkPairs.forEach(([p, q], k) => {
         this.cellPosition(p, a);
         this.cellPosition(q, b);
-        const r = Math.min(this.scl[p], this.scl[q]) / (this.opts.cellScale ?? 1);
+        const vp = this.visuals[p];
+        const vq = this.visuals[q];
+        let r = Math.min(this.scl[p], this.scl[q]) / cs;
+        if (vp?.hidden && vq?.hidden) r = 0;
+        else if (vp?.hidden || vq?.hidden) {
+          // doorgang naar een verborgen laag: kort stompje vanaf de zichtbare cel in die richting
+          const [vis, hid] = vp?.hidden ? [b, a] : [a, b];
+          const unit = (vp?.hidden ? this.scl[q] : this.scl[p]) / cs;
+          const len = Math.min(vis.distanceTo(hid) * 0.45, unit * 0.62);
+          hid.sub(vis).normalize().multiplyScalar(len).add(vis);
+          r = unit;
+        } else if (vp?.dim || vq?.dim) r *= 0.5; // herinnering aan een eerder bezochte laag: dunner
         this.placeCylinder(this.links!, k, a, b, r);
       });
       this.links.instanceMatrix.needsUpdate = true;

@@ -100,6 +100,17 @@ class MazeGame implements PuzzleGame {
     this.pos = data.start;
     this.trail = new Set([data.start]);
     this.fog = fog && this.grid.D >= 3;
+    this.remember();
+  }
+  /** Doorsnedes (z, w) waar de speler al geweest is: die blijven in de doorsnede-modus zwak zichtbaar. */
+  private seen = new Set<string>();
+  private sliceKey(i: number): string {
+    let k = "";
+    for (let a = 2; a < this.grid.D; a++) k += this.grid.c(i, a) + ",";
+    return k;
+  }
+  private remember() {
+    this.seen = new Set([...this.trail].map((i) => this.sliceKey(i)));
   }
   private sameSlice(i: number): boolean {
     for (let a = 2; a < this.grid.D; a++) if (this.grid.c(i, a) !== this.grid.c(this.pos, a)) return false;
@@ -107,16 +118,21 @@ class MazeGame implements PuzzleGame {
   }
   visual(i: number): CellVisual {
     const v: CellVisual = {};
-    if (this.fog && !this.sameSlice(i)) v.hidden = true;
+    // doorsnede-modus: eigen laag live; bezochte lagen als herinnering (zwak); de rest verborgen
+    if (this.fog && !this.sameSlice(i)) {
+      if (this.seen.has(this.sliceKey(i))) v.dim = true;
+      else v.hidden = true;
+    }
     if (i === this.pos) {
       v.icon = "player";
       v.tone = "glow";
       v.fill = "#4fe3ff";
     } else if (i === this.data.goal) {
+      // het doel blijft altijd zichtbaar: zo weet je naar welk bord je moet
       v.icon = "goal";
       v.tone = "glow";
       v.fill = "#ffcf5c";
-      if (this.fog && !this.sameSlice(i)) v.hidden = true;
+      v.hidden = false;
     } else if (this.trail.has(i)) {
       v.trail = true;
       v.fill = "rgba(79,227,255,.22)";
@@ -143,6 +159,7 @@ class MazeGame implements PuzzleGame {
     this.pos = m;
     this.steps++;
     this.trail.add(m);
+    this.seen.add(this.sliceKey(m));
     this.hintCells = [];
     return true;
   }
@@ -164,6 +181,7 @@ class MazeGame implements PuzzleGame {
     this.pos = s.p;
     this.steps = s.s;
     this.trail = new Set(s.t);
+    this.remember();
     this.hintCells = [];
   }
   check(): Status {

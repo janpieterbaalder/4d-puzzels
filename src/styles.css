@@ -1506,7 +1506,23 @@ details.rules:not([open]) summary {
   background: color-mix(in srgb, var(--axis-w) calc(var(--wt, 0) * 1%), rgba(255, 255, 255, 0.025));
 }
 .board.fogged {
-  opacity: 0.12;
+  opacity: 0.5;
+}
+/* doorsnede-modus: een bord waar je nog niet was, is leeg maar niet weg */
+.board.fogged::after {
+  content: "nog niet bezocht";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--muted, #8b93b8);
+  pointer-events: none;
+}
+.flat.d4 .board.fogged::after {
+  font-size: 9.5px;
 }
 .board.with-clues {
   display: grid;
