@@ -76,6 +76,8 @@ export class SpatialView extends Stage {
   private animDur = 0.8;
   private solid: THREE.InstancedMesh;
   private glass: THREE.InstancedMesh;
+  /** Cellen buiten de focus (Lijnen/Laag): even groot, maar veel doorzichtiger. */
+  private fade: THREE.InstancedMesh;
   private kind: Uint8Array; // 0 verborgen, 1 solid, 2 glas
   private sprites: (THREE.Sprite | null)[];
   private spriteMats = new Map<THREE.Texture, THREE.SpriteMaterial>();
@@ -139,13 +141,19 @@ export class SpatialView extends Stage {
     });
     this.solid = new THREE.InstancedMesh(geo, solidMat, N);
     this.glass = new THREE.InstancedMesh(geo, glassMat, N);
-    for (const m of [this.solid, this.glass]) {
+    const fadeMat = glassMat.clone();
+    fadeMat.opacity = 0.09;
+    fadeMat.clearcoat = 0.3;
+    fadeMat.envMapIntensity = 0.5;
+    this.fade = new THREE.InstancedMesh(geo, fadeMat, N);
+    for (const m of [this.solid, this.glass, this.fade]) {
       m.frustumCulled = false;
       m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       for (let i = 0; i < N; i++) m.setColorAt(i, tmpC.set(0xffffff));
       this.group.add(m);
     }
     this.glass.renderOrder = 2;
+    this.fade.renderOrder = 1;
 
     this.haloMat = new THREE.SpriteMaterial({
       map: haloTexture(),
@@ -489,7 +497,7 @@ export class SpatialView extends Stage {
       const v = this.visuals[i];
       const filtered = this.filter && !this.filter(i);
       let kind = v.hidden ? 0 : v.tone === "solid" || v.tone === "dark" || v.tone === "glow" ? 1 : 2;
-      if (filtered && kind) kind = 2;
+      if (filtered && kind) kind = 3; // vaag: even groot, doorzichtig
       this.kind[i] = kind;
       let col: THREE.Color;
       if (v.tone === "dark") col = cssColor(v.fill, "#151a28");
@@ -502,16 +510,17 @@ export class SpatialView extends Stage {
       const hl = this.highlight.get(i);
       if (hl) col.lerp(cssColor(hl, "#fff"), 0.55);
       if (v.error) col.set("#ff4d5e");
-      // buiten de focus (Lijnen/Laag): licht zichtbaar, niet weg
-      if (filtered) col.lerp(new THREE.Color("#30364d"), 0.45);
+      // buiten de focus (Lijnen/Laag): vager, niet weg
+      if (filtered) col.lerp(new THREE.Color("#30364d"), 0.35);
       // zonder tone mapping lopen belichte vlakken anders over naar wit; basiskleur iets temperen
       this.solid.setColorAt(i, this.opts.vivid ? tmpC.copy(col).multiplyScalar(VIVID.gain) : col);
       this.glass.setColorAt(i, col);
+      this.fade.setColorAt(i, col);
 
       // label / icoon
       let tex: THREE.Texture | null = null;
       // cijfers van cellen buiten de focus blijven gedimd leesbaar
-      if (filtered && kind && v.text && !v.icon) tex = labelTexture(v.text, "rgba(214,222,255,0.42)", 600);
+      if (filtered && kind && v.text && !v.icon) tex = labelTexture(v.text, "rgba(214,222,255,0.38)", 600);
       if (!filtered && kind) {
         if (v.icon) tex = iconTexture(v.icon, v.iconColor ?? "#ffffff");
         else if (v.text) {
@@ -558,16 +567,16 @@ export class SpatialView extends Stage {
     }
     if (this.solid.instanceColor) this.solid.instanceColor.needsUpdate = true;
     if (this.glass.instanceColor) this.glass.instanceColor.needsUpdate = true;
+    if (this.fade.instanceColor) this.fade.instanceColor.needsUpdate = true;
   }
 
   private writeMatrices() {
     const N = this.grid.count;
     for (let i = 0; i < N; i++) {
       const v = this.visuals[i] ?? {};
-      const filtered = this.filter && !this.filter(i);
       let s = this.scl[i];
       if (v.dim) s *= 0.7;
-      if (filtered) s *= 0.55;
+      // cellen buiten de focus (Lijnen/Laag) worden alleen vager (glas, gedimd), niet kleiner
       tmpV.set(this.pos[i * 3], this.pos[i * 3 + 1], this.pos[i * 3 + 2]);
       const k = this.kind[i];
       tmpS.setScalar(k === 1 ? s : 1e-6);
@@ -576,13 +585,18 @@ export class SpatialView extends Stage {
       tmpS.setScalar(k === 2 ? s : 1e-6);
       tmpM.compose(tmpV, tmpQ.identity(), tmpS);
       this.glass.setMatrixAt(i, tmpM);
+      tmpS.setScalar(k === 3 ? s : 1e-6);
+      tmpM.compose(tmpV, tmpQ.identity(), tmpS);
+      this.fade.setMatrixAt(i, tmpM);
       const sp = this.sprites[i];
       if (sp) sp.scale.setScalar(s * (v.icon ? 0.85 : 0.72));
     }
     this.solid.instanceMatrix.needsUpdate = true;
     this.glass.instanceMatrix.needsUpdate = true;
+    this.fade.instanceMatrix.needsUpdate = true;
     this.solid.boundingSphere = null;
     this.glass.boundingSphere = null;
+    this.fade.boundingSphere = null;
   }
 
   private placeCylinder(mesh: THREE.InstancedMesh, k: number, a: THREE.Vector3, b: THREE.Vector3, radiusScale = 1) {
