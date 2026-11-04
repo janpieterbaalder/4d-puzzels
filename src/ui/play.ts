@@ -236,7 +236,6 @@ export function playScreen(p: PlayParams): Screen {
       cellScale: T.id === "maze" ? 0.42 : 1,
       tintByW: true,
       vivid: T.id === "tectonic",
-      compass: true,
     });
     space.autoRotate = false;
     // doolhof: geen lichtsporen door muren heen, wel de echte doorgangen in de kleur van de pijlknop (updateExits)
