@@ -97,6 +97,8 @@ export interface PuzzleGame {
   regionOf?(i: number): number;
   /** Groepen (blokken) in het xy-vlak voor dikke randen in het platte bord. */
   boxOf?(i: number): number;
+  /** Blok van cel i in het vlak (a, b), of −1 als dat vlak geen blokken heeft (sudoku, voor andere sneden van het bord). */
+  boxOfPlane?(i: number, a: number, b: number): number;
   /** Aantal zetten (voor statistiek). */
   moves?(): number;
 }

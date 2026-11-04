@@ -25,6 +25,9 @@ type ViewMode = "board" | "space" | "split";
 
 const AX = ["x", "y", "z", "w"];
 
+/** Laatst gekozen as voor de lagen van het platte bord, per dimensie (blijft binnen de sessie). */
+const lastLayerAxis: Record<number, number> = {};
+
 export function playScreen(p: PlayParams): Screen {
   const { type: T, preset: P } = presetById(p.type, p.preset);
   const D = P.sizes.length;
@@ -117,8 +120,9 @@ export function playScreen(p: PlayParams): Screen {
   }
   function keysHtml() {
     const k = ["<kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> bewegen in het bord"];
-    if (D >= 3) k.push("<kbd>Shift</kbd> + <kbd>←</kbd><kbd>→</kbd> naar het bord links/rechts (z)");
-    if (D >= 4) k.push("<kbd>Shift</kbd> + <kbd>↑</kbd><kbd>↓</kbd> naar het bord erboven/eronder (w)");
+    if (D >= 3) k.push("<kbd>Shift</kbd> + <kbd>←</kbd><kbd>→</kbd> naar het bord links/rechts");
+    if (D >= 4) k.push("<kbd>Shift</kbd> + <kbd>↑</kbd><kbd>↓</kbd> naar het bord erboven/eronder");
+    if (D >= 3) k.push("In de bordweergave volgen de pijltjes de gekozen lagen; in de ruimte gelden x, y (pijltjes) en z, w (Shift).");
     if (T.id !== "maze") k.push("<kbd>Spatie</kbd> invullen/wisselen · rechtsklik terug");
     k.push("<kbd>Ctrl</kbd>+<kbd>Z</kbd> terug · <kbd>H</kbd> hint");
     return `<h3>Toetsen</h3><p class="keys">${k.join("<br>")}</p>`;
@@ -149,7 +153,10 @@ export function playScreen(p: PlayParams): Screen {
 
   function build() {
     const lined = ["sudoku", "tectonic", "maze"].includes(T.id);
+    // 3D/4D: kies langs welke as de borden (lagen) gesneden worden; staat boven het bord
+    if (D >= 3 && !game.fog) boardPane.appendChild(buildLayerPicker());
     flat = new FlatBoard(boardPane, game, { onCell, onHover }, { lined });
+    if (D >= 3 && !game.fog) flat.setView(layerView(lastLayerAxis[D] ?? 2));
     flat.showRails = store.settings().rails;
     if (game.focus) sel = game.focus();
 
@@ -229,6 +236,7 @@ export function playScreen(p: PlayParams): Screen {
       cellScale: T.id === "maze" ? 0.42 : 1,
       tintByW: true,
       vivid: T.id === "tectonic",
+      compass: true,
     });
     space.autoRotate = false;
     // doolhof: geen lichtsporen door muren heen, wel de echte doorgangen in de kleur van de pijlknop (updateExits)
@@ -373,6 +381,37 @@ export function playScreen(p: PlayParams): Screen {
       space.setAutoRotate(true);
       spinBtn.classList.add("on");
     }
+  }
+
+  /**
+   * As-volgorde van het platte bord als de lagen langs `axis` lopen: [horizontaal, verticaal, kolommen, rijen].
+   * 3D: z = voorkant (x, y), y = bovenaanzicht (x, z), x = zijaanzicht (z, y). 4D: w als rijen, of als kolommen bij w.
+   */
+  function layerView(axis: number): number[] {
+    if (D === 3) return axis === 0 ? [2, 1, 0] : axis === 1 ? [0, 2, 1] : [0, 1, 2];
+    return axis === 0 ? [2, 1, 0, 3] : axis === 1 ? [0, 2, 1, 3] : axis === 3 ? [0, 1, 3, 2] : [0, 1, 2, 3];
+  }
+
+  function buildLayerPicker(): HTMLElement {
+    const seg = h("div", { class: "seg small layer-axis", role: "radiogroup", "aria-label": "Lagen langs as" });
+    const cur = lastLayerAxis[D] ?? 2;
+    for (let a = 0; a < D; a++) {
+      const name = "xyzw"[a];
+      const b = h("button", {
+        "data-a": a,
+        class: a === cur ? "on" : "",
+        style: `--c:var(--axis-${name})`,
+        title: `Borden snijden langs de ${name}-as: elk bord heeft een vaste ${name}`,
+        onclick: () => {
+          lastLayerAxis[D] = a;
+          for (const x of seg.querySelectorAll<HTMLElement>("button")) x.classList.toggle("on", Number(x.dataset.a) === a);
+          flat.setView(layerView(a));
+          paintSel();
+        },
+      }, name);
+      seg.appendChild(b);
+    }
+    return h("div", { class: "layer-pick" }, h("span", {}, "Lagen langs"), seg);
   }
 
   /** 4D-doorsnede: de camera kadert de eigen doorsnede in plaats van de hele (grotendeels verborgen) tesseract. */
@@ -857,6 +896,8 @@ export function playScreen(p: PlayParams): Screen {
       e.preventDefault();
       let [a, d] = arrows[k];
       if (e.shiftKey) a += 2;
+      // in de bordweergave volgen de pijltjes het scherm: links/rechts = horizontaal in het bord, enz.
+      if (flat && main.dataset.mode !== "space") a = flat.getView()[a] ?? a;
       if (game.input === "move") doMove(a, d);
       else moveSel(a, d);
       return;

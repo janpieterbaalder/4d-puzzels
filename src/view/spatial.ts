@@ -31,6 +31,8 @@ export interface SpatialOptions {
   tintByW?: boolean;
   /** Volle kubussen zonder tone mapping: kleuren blijven even verzadigd als op het platte bord (Tectonic-gebieden). */
   vivid?: boolean;
+  /** Kompas (assenkruis) in de hoek dat meedraait met de camera. */
+  compass?: boolean;
 }
 
 const tmpM = new THREE.Matrix4();
@@ -500,13 +502,16 @@ export class SpatialView extends Stage {
       const hl = this.highlight.get(i);
       if (hl) col.lerp(cssColor(hl, "#fff"), 0.55);
       if (v.error) col.set("#ff4d5e");
-      if (filtered) col.lerp(new THREE.Color("#30364d"), 0.7);
+      // buiten de focus (Lijnen/Laag): licht zichtbaar, niet weg
+      if (filtered) col.lerp(new THREE.Color("#30364d"), 0.45);
       // zonder tone mapping lopen belichte vlakken anders over naar wit; basiskleur iets temperen
       this.solid.setColorAt(i, this.opts.vivid ? tmpC.copy(col).multiplyScalar(VIVID.gain) : col);
       this.glass.setColorAt(i, col);
 
       // label / icoon
       let tex: THREE.Texture | null = null;
+      // cijfers van cellen buiten de focus blijven gedimd leesbaar
+      if (filtered && kind && v.text && !v.icon) tex = labelTexture(v.text, "rgba(214,222,255,0.42)", 600);
       if (!filtered && kind) {
         if (v.icon) tex = iconTexture(v.icon, v.iconColor ?? "#ffffff");
         else if (v.text) {
@@ -562,7 +567,7 @@ export class SpatialView extends Stage {
       const filtered = this.filter && !this.filter(i);
       let s = this.scl[i];
       if (v.dim) s *= 0.7;
-      if (filtered) s *= 0.28;
+      if (filtered) s *= 0.55;
       tmpV.set(this.pos[i * 3], this.pos[i * 3 + 1], this.pos[i * 3 + 2]);
       const k = this.kind[i];
       tmpS.setScalar(k === 1 ? s : 1e-6);
@@ -742,7 +747,74 @@ export class SpatialView extends Stage {
     return busy;
   }
 
+  /* ---------- kompas ---------- */
+
+  private compassEl: HTMLDivElement | null = null;
+  private compassKey = "";
+
+  /**
+   * Assenkruis in de hoek: per as de richting waarin die as op dit moment loopt, gezien vanaf de gekozen cel
+   * (of het midden). Afgeleid van echte celposities, dus ook juist in de tesseract, plakjes en borden.
+   */
+  private updateCompass() {
+    if (!this.opts.compass) return;
+    if (!this.compassEl) {
+      this.compassEl = document.createElement("div");
+      this.compassEl.className = "compass";
+      this.compassEl.setAttribute("aria-hidden", "true");
+      this.host.appendChild(this.compassEl);
+    }
+    const g = this.grid;
+    this.camera.updateMatrixWorld();
+    this.group.updateMatrixWorld();
+    const ref = this.sel >= 0 ? this.sel : g.index(g.n.map((n) => Math.floor((n - 1) / 2)));
+    const base = this.cellPosition(ref, new THREE.Vector3());
+    const view = this.camera.matrixWorldInverse;
+    const arrows: { a: number; x: number; y: number; z: number; radial: boolean }[] = [];
+    for (let a = 0; a < g.D; a++) {
+      let q = g.step(ref, a, 1);
+      let sign = 1;
+      if (q < 0) {
+        q = g.step(ref, a, -1);
+        sign = -1;
+      }
+      if (q < 0) continue;
+      const d = this.cellPosition(q, new THREE.Vector3()).sub(base).multiplyScalar(sign);
+      const len = d.length();
+      if (len < 1e-4) {
+        arrows.push({ a, x: 0, y: 0, z: 1, radial: true });
+        continue;
+      }
+      d.divideScalar(len).transformDirection(this.group.matrixWorld).transformDirection(view); // richting in camera-ruimte (x rechts, y omhoog, z naar je toe)
+      arrows.push({ a, x: d.x, y: d.y, z: d.z, radial: false });
+    }
+    const key = arrows.map((r) => `${r.a}:${r.x.toFixed(2)},${r.y.toFixed(2)},${r.z.toFixed(2)}`).join("|") + (this.layout === "tesseract" ? "T" : "");
+    if (key === this.compassKey) return;
+    this.compassKey = key;
+    // pijlen die van je af wijzen eerst (achter), daarna die naar je toe
+    arrows.sort((p, q) => p.z - q.z);
+    const R = 34;
+    let svg = `<svg viewBox="-50 -50 100 100"><circle r="3" fill="rgba(255,255,255,.7)"/>`;
+    for (const r of arrows) {
+      if (r.radial) continue;
+      const col = AXIS_COLORS[r.a];
+      const ex = r.x * R;
+      const ey = -r.y * R;
+      const op = r.z >= 0 ? 1 : 0.45 + 0.4 * (1 + r.z);
+      const tx = r.x * (R + 10);
+      const ty = -r.y * (R + 10);
+      svg += `<g opacity="${op.toFixed(2)}"><line x1="0" y1="0" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="${col}" stroke-width="${r.z >= 0 ? 5 : 3.5}" stroke-linecap="round"/>`;
+      svg += `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="${r.z >= 0 ? 4.2 : 3}" fill="${col}"/>`;
+      svg += `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" fill="${col}" text-anchor="middle" dominant-baseline="central">${"xyzw"[r.a]}</text></g>`;
+    }
+    svg += "</svg>";
+    const radialW = arrows.some((r) => r.a === 3 && r.radial);
+    const note = g.D === 4 && (this.layout === "tesseract" || radialW) ? `<small>w: binnen ↔ buiten</small>` : "";
+    this.compassEl.innerHTML = svg + note;
+  }
+
   protected beforeRender() {
+    this.updateCompass();
     const cam = this.camera.position;
     const p = new THREE.Vector3();
     for (let i = 0; i < this.grid.count; i++) {
