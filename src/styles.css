@@ -1800,28 +1800,28 @@ details.rules:not([open]) summary {
   pointer-events: none;
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
 }
-.cell .bd-z0,
-.cell .bd-z1 {
-  background: var(--axis-z);
+.cell .bd-c0,
+.cell .bd-c1 {
+  background: var(--c, var(--axis-z));
   top: 50%;
   transform: translateY(-50%);
 }
-.cell .bd-z0 {
+.cell .bd-c0 {
   left: -2px;
 }
-.cell .bd-z1 {
+.cell .bd-c1 {
   right: -2px;
 }
-.cell .bd-w0,
-.cell .bd-w1 {
-  background: var(--axis-w);
+.cell .bd-r0,
+.cell .bd-r1 {
+  background: var(--c, var(--axis-w));
   left: 50%;
   transform: translateX(-50%);
 }
-.cell .bd-w0 {
+.cell .bd-r0 {
   top: -2px;
 }
-.cell .bd-w1 {
+.cell .bd-r1 {
   bottom: -2px;
 }
 /* doolhof-portalen */
@@ -1834,28 +1834,28 @@ details.rules:not([open]) summary {
   pointer-events: none;
   text-shadow: 0 0 8px currentColor;
 }
-.cell .pt-z0,
-.cell .pt-z1 {
-  color: var(--axis-z);
+.cell .pt-c0,
+.cell .pt-c1 {
+  color: var(--c, var(--axis-z));
   top: 50%;
   transform: translateY(-55%);
 }
-.cell .pt-z0 {
+.cell .pt-c0 {
   left: 4px;
 }
-.cell .pt-z1 {
+.cell .pt-c1 {
   right: 4px;
 }
-.cell .pt-w0,
-.cell .pt-w1 {
-  color: var(--axis-w);
+.cell .pt-r0,
+.cell .pt-r1 {
+  color: var(--c, var(--axis-w));
   left: 50%;
   transform: translateX(-50%);
 }
-.cell .pt-w0 {
+.cell .pt-r0 {
   top: 2px;
 }
-.cell .pt-w1 {
+.cell .pt-r1 {
   bottom: 2px;
 }
 
@@ -2560,4 +2560,68 @@ details.rules:not([open]) summary {
 /* opties op gekleurde (volle) cellen leesbaar houden, bv. Tectonic */
 .cell.t-solid .notes {
   color: rgba(10, 12, 28, 0.78);
+}
+
+/* bordweergave: langs welke as de borden (lagen) gesneden worden */
+.board-pane:has(> .layer-pick) {
+  grid-template-rows: auto 1fr;
+}
+.layer-pick {
+  align-self: start;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.layer-axis button {
+  min-width: 34px;
+  font-family: var(--display);
+  font-weight: 700;
+  color: color-mix(in srgb, var(--c) 80%, white);
+}
+.layer-axis button.on {
+  color: #0b0d1c;
+  background: var(--c);
+}
+
+/* kompas in de 3D-weergave: richting van x, y, z (en w) vanaf de gekozen cel */
+.compass {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  width: 78px;
+  pointer-events: none;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+.compass svg {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  background: rgba(10, 12, 26, 0.5);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(8px);
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 15px;
+}
+.compass small {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .compass {
+    top: 8px;
+    left: 8px;
+    width: 74px;
+  }
+  .compass svg {
+    width: 74px;
+    height: 74px;
+  }
 }

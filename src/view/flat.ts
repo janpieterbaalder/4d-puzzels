@@ -29,45 +29,82 @@ export class FlatBoard {
   private last: string[] = [];
   showRails = true;
   showPeers = true;
+  /**
+   * Welke as waar staat: [horizontaal in een bord, verticaal in een bord, kolommen van borden, rijen van borden].
+   * Standaard x, y | z, w. Met setView kun je de borden langs een andere as snijden.
+   */
+  private view: number[];
+  private wrap: HTMLDivElement | null = null;
 
   constructor(host: HTMLElement, game: PuzzleGame, cb: FlatCallbacks, opts: { lined?: boolean } = {}) {
     this.grid = game.grid;
     this.game = game;
     this.cb = cb;
     this.lined = !!opts.lined;
+    this.view = Array.from({ length: this.grid.D }, (_, a) => a);
     this.el = document.createElement("div");
     this.el.className = "flat" + (this.lined ? " lined" : " tiles") + ` d${this.grid.D}`;
     host.appendChild(this.el);
+    this.bindInput();
     this.build();
     this.ro = new ResizeObserver(() => this.fit());
     this.ro.observe(host);
     this.render();
   }
 
+  /** As-volgorde wijzigen en het bord opnieuw opbouwen. */
+  setView(view: number[]) {
+    if (view.length !== this.grid.D || view.join() === this.view.join()) return;
+    this.view = view.slice();
+    this.wrap?.remove();
+    this.cells = [];
+    this.boardEls = [];
+    this.clueEls = [];
+    this.last = [];
+    this.build();
+    this.fit();
+    this.render();
+  }
+
+  getView(): number[] {
+    return this.view.slice();
+  }
+
+  /** Aantal cellen langs positie s van de weergave (0 = horizontaal, 1 = verticaal, 2 = kolommen, 3 = rijen). */
+  private span(s: number): number {
+    return s < this.grid.D ? this.grid.n[this.view[s]] : 1;
+  }
+
   private build() {
     const g = this.grid;
     const D = g.D;
-    const nz = D >= 3 ? g.n[2] : 1;
-    const nw = D >= 4 ? g.n[3] : 1;
-    const nx = g.n[0];
-    const ny = D >= 2 ? g.n[1] : 1;
+    const V = this.view;
+    const nx = this.span(0);
+    const ny = this.span(1);
+    const nz = this.span(2);
+    const nw = this.span(3);
     this.cells = new Array(g.count);
     const wrap = document.createElement("div");
     wrap.className = "flat-grid";
     wrap.style.setProperty("--nz", String(nz));
     wrap.style.setProperty("--nw", String(nw));
     this.el.appendChild(wrap);
+    this.wrap = wrap;
 
     const clues = this.game.clues?.();
     const hasClues = !!clues && clues.length > 0;
+    const head = (slot: number, k: number) => {
+      const ax = V[slot];
+      return `<b style="color:var(--axis-${AX[ax]})">${AX[ax]}</b> = ${k}` + (hasClues ? ` <span class="clue-chip" data-axis="${ax}" data-k="${k}"></span>` : "");
+    };
 
-    // kolomkoppen (z) voor 4D
+    // kolomkoppen voor 4D
     if (D === 4) {
-      if (D === 4) wrap.appendChild(document.createElement("div"));
+      wrap.appendChild(document.createElement("div"));
       for (let z = 0; z < nz; z++) {
         const h = document.createElement("div");
         h.className = "axis-head z";
-        h.innerHTML = `<b>z</b> = ${z}` + (hasClues ? ` <span class="clue-chip" data-axis="2" data-k="${z}"></span>` : "");
+        h.innerHTML = head(2, z);
         wrap.appendChild(h);
       }
     }
@@ -75,7 +112,7 @@ export class FlatBoard {
       if (D === 4) {
         const h = document.createElement("div");
         h.className = "axis-head w";
-        h.innerHTML = `<b>w</b> = ${w}` + (hasClues ? ` <span class="clue-chip" data-axis="3" data-k="${w}"></span>` : "");
+        h.innerHTML = head(3, w);
         wrap.appendChild(h);
       }
       for (let z = 0; z < nz; z++) {
@@ -86,7 +123,7 @@ export class FlatBoard {
         if (D === 3) {
           const h = document.createElement("div");
           h.className = "axis-head z board-head";
-          h.innerHTML = `<b>z</b> = ${z}` + (hasClues ? ` <span class="clue-chip" data-axis="2" data-k="${z}"></span>` : "");
+          h.innerHTML = head(2, z);
           board.appendChild(h);
         }
         const inner = document.createElement("div");
@@ -106,7 +143,9 @@ export class FlatBoard {
         }
         for (let y = 0; y < ny; y++)
           for (let x = 0; x < nx; x++) {
-            const c = [x, y, z, w].slice(0, D);
+            const c = new Array(D).fill(0);
+            const pos = [x, y, z, w];
+            for (let s = 0; s < D; s++) c[V[s]] = pos[s];
             const i = g.index(c);
             const cell = document.createElement("div");
             cell.className = "cell";
@@ -124,8 +163,9 @@ export class FlatBoard {
       axis: Number(el.dataset.axis),
       k: Number(el.dataset.k),
     }));
+  }
 
-    // invoer
+  private bindInput() {
     this.el.addEventListener("contextmenu", (e) => e.preventDefault());
     this.el.addEventListener("pointerdown", (e) => {
       const t = (e.target as HTMLElement).closest<HTMLElement>(".cell");
@@ -148,16 +188,20 @@ export class FlatBoard {
     if (!host) return;
     const g = this.grid;
     const D = g.D;
-    const nz = D >= 3 ? g.n[2] : 1;
-    const nw = D >= 4 ? g.n[3] : 1;
-    const nx = g.n[0];
-    const ny = D >= 2 ? g.n[1] : 1;
+    void g;
+    const nx = this.span(0);
+    const ny = this.span(1);
+    const nz = this.span(2);
+    const nw = this.span(3);
     // smal scherm + 4D: compactere borden (zie styles.css), zodat alle kolommen in beeld passen
     const compact = D === 4 && matchMedia("(max-width: 560px)").matches;
     // ondermarge van het vlak (bv. pijlkruisen van het doolhof eronder) telt niet mee
     const padB = parseFloat(getComputedStyle(host).paddingBottom) || 0;
+    // andere elementen in het vlak (zoals de keuze 'Lagen langs') nemen ook hoogte in
+    let other = 0;
+    for (const c of host.children) if (c !== this.el && c instanceof HTMLElement && c.offsetParent !== null) other += c.offsetHeight;
     const W = host.clientWidth - (compact ? 14 : 30);
-    const H = host.clientHeight - padB - (compact ? 14 : 30);
+    const H = host.clientHeight - padB - other - (compact ? 14 : 30);
     const gapRatio = this.lined ? 0 : 0.14;
     const boardPad = D === 4 ? (compact ? 5 : 8) : 11;
     const boardGap = compact ? 8 : 14;
@@ -193,7 +237,7 @@ export class FlatBoard {
     this.el.style.setProperty("--gap", Math.round(cell * gapRatio) + "px");
     // controleer de echte maat (koppen, tellingen) en krimp zo nodig
     for (let k = 0; k < 8 && cell > min; k++) {
-      const over = Math.max(this.el.scrollWidth - (host.clientWidth - 4), this.el.scrollHeight - (host.clientHeight - padB - 4));
+      const over = Math.max(this.el.scrollWidth - (host.clientWidth - 4), this.el.scrollHeight - (host.clientHeight - padB - other - 4));
       if (over <= 0) break;
       const cols = D === 4 ? nz * nx : D === 3 ? Number(this.el.style.getPropertyValue("--cols") || nz) * nx : nx;
       cell = Math.max(min, cell - Math.max(1, Math.ceil(over / Math.max(cols, ny * nw))));
@@ -246,22 +290,31 @@ export class FlatBoard {
     const errs = new Set(game.check().errors);
     const marks = game.edgeMarks?.() ?? [];
     const markOf = new Map<number, string[]>();
+    const V = this.view;
     for (const m of marks) {
       const ax = m.axis;
+      const slot = V.indexOf(ax); // plek in de weergave: 0/1 in het bord, 2/3 tussen borden
       const lo = g.c(m.a, ax) < g.c(m.b, ax) ? m.a : m.b; // cel aan de −-kant
       const hi = lo === m.a ? m.b : m.a;
       const loSmaller = lo === m.a;
-      if (ax <= 1) {
-        const glyph = ax === 0 ? (loSmaller ? "<" : ">") : loSmaller ? "∧" : "∨";
-        (markOf.get(lo) ?? markOf.set(lo, []).get(lo)!).push(`<i class="mk mk-${AX[ax]}">${glyph}</i>`);
+      if (slot <= 1) {
+        const glyph = slot === 0 ? (loSmaller ? "<" : ">") : loSmaller ? "∧" : "∨";
+        (markOf.get(lo) ?? markOf.set(lo, []).get(lo)!).push(`<i class="mk mk-${slot === 0 ? "x" : "y"}">${glyph}</i>`);
       } else {
-        const glyph = ax === 2 ? (loSmaller ? "‹" : "›") : loSmaller ? "˄" : "˅";
-        (markOf.get(lo) ?? markOf.set(lo, []).get(lo)!).push(`<i class="bd bd-${AX[ax]}1" title="vergelijk met ${AX[ax]}+1">${glyph}</i>`);
-        (markOf.get(hi) ?? markOf.set(hi, []).get(hi)!).push(`<i class="bd bd-${AX[ax]}0" title="vergelijk met ${AX[ax]}−1">${glyph}</i>`);
+        const pos = slot === 2 ? "c" : "r";
+        const glyph = slot === 2 ? (loSmaller ? "‹" : "›") : loSmaller ? "˄" : "˅";
+        const st = `style="--c:var(--axis-${AX[ax]})"`;
+        (markOf.get(lo) ?? markOf.set(lo, []).get(lo)!).push(`<i class="bd bd-${pos}1" ${st} title="vergelijk met ${AX[ax]}+1">${glyph}</i>`);
+        (markOf.get(hi) ?? markOf.set(hi, []).get(hi)!).push(`<i class="bd bd-${pos}0" ${st} title="vergelijk met ${AX[ax]}−1">${glyph}</i>`);
       }
     }
     const regionOf = game.regionOf?.bind(game);
-    const boxOf = game.boxOf?.bind(game);
+    // blokken in het vlak van het bord (bij een andere snede: de blokken van dát vlak, als die er zijn)
+    const boxOf = game.boxOfPlane
+      ? (i: number) => game.boxOfPlane!(i, V[0], V[1] ?? 1)
+      : V[0] === 0 && V[1] === 1
+        ? game.boxOf?.bind(game)
+        : undefined;
     for (let i = 0; i < g.count; i++) {
       const v: CellVisual = game.visual(i);
       if (errs.has(i)) v.error = true;
@@ -280,13 +333,13 @@ export class FlatBoard {
         const key = regionOf ? regionOf : boxOf!;
         const me = key(i);
         const sides: [number, number, string][] = [
-          [0, -1, "l"],
-          [0, 1, "r"],
-          [1, -1, "t"],
-          [1, 1, "b"],
+          [V[0], -1, "l"],
+          [V[0], 1, "r"],
+          [V[1], -1, "t"],
+          [V[1], 1, "b"],
         ];
         for (const [ax, d, s] of sides) {
-          if (ax >= g.D) continue;
+          if (ax === undefined || ax >= g.D) continue;
           const m = g.step(i, ax, d);
           if (m >= 0 && key(m) !== me) borders.push("rb-" + s);
         }
@@ -295,24 +348,27 @@ export class FlatBoard {
       if (game.walls) {
         const open = game.walls(i);
         const sides: [number, number, string][] = [
-          [0, -1, "l"],
-          [0, 1, "r"],
-          [1, -1, "t"],
-          [1, 1, "b"],
+          [V[0], -1, "l"],
+          [V[0], 1, "r"],
+          [V[1], -1, "t"],
+          [V[1], 1, "b"],
         ];
         for (const [ax, d, s] of sides) {
-          if (ax >= g.D) continue;
+          if (ax === undefined || ax >= g.D) continue;
           const bit = 1 << (2 * ax + (d > 0 ? 1 : 0));
           if (!(open & bit)) borders.push("wl-" + s);
         }
-        for (let ax = 2; ax < g.D; ax++)
+        // doorgangen naar een ander bord, in de kleur van hun as
+        for (let slot = 2; slot < g.D; slot++) {
+          const ax = V[slot];
           for (const d of [-1, 1]) {
             const bit = 1 << (2 * ax + (d > 0 ? 1 : 0));
             if (open & bit) {
-              const glyph = ax === 2 ? (d < 0 ? "‹" : "›") : d < 0 ? "˄" : "˅";
-              portals += `<i class="pt pt-${AX[ax]}${d > 0 ? 1 : 0}">${glyph}</i>`;
+              const glyph = slot === 2 ? (d < 0 ? "‹" : "›") : d < 0 ? "˄" : "˅";
+              portals += `<i class="pt pt-${slot === 2 ? "c" : "r"}${d > 0 ? 1 : 0}" style="--c:var(--axis-${AX[ax]})">${glyph}</i>`;
             }
           }
+        }
       }
       cls.push(...borders);
       let inner = "";
