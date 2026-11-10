@@ -1,6 +1,6 @@
 import { Grid } from "../core/grid";
 import { Rng } from "../core/rng";
-import { Hyper } from "./hyper";
+import { Hyper, planeName } from "./hyper";
 import type { CellVisual, Hint, HyperClue, Preset, PuzzleData, PuzzleGame, PuzzleType, Status } from "./types";
 
 interface BsData extends PuzzleData {
@@ -309,13 +309,13 @@ class BattleshipGame implements PuzzleGame {
       if (c.open > 0 && (c.current === c.target || c.target - c.current === c.open)) {
         const cells = this.grid.hyperplane(c.axis, c.k).filter((i) => this.st[i] === 0);
         this.hintCells = cells;
-        const name = ["x", "y", "z", "w"][c.axis];
+        const name = `${planeName(this.grid.D, c.axis)} ${["x", "y", "z", "w"][c.axis]} = ${c.k}`;
         return {
           cells,
           text:
             c.current === c.target
-              ? `Hypervlak ${name} = ${c.k} heeft al ${c.target} scheepsdelen: de rest is water.`
-              : `Hypervlak ${name} = ${c.k} heeft precies zoveel open cellen als er nog schip nodig is.`,
+              ? `${name} heeft al ${c.target} scheepsdelen: de rest is water.`
+              : `${name} heeft precies zoveel open cellen als er nog schip nodig is.`,
         };
       }
     }

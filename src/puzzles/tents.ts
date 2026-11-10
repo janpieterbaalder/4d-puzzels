@@ -1,6 +1,6 @@
 import { Grid } from "../core/grid";
 import { Rng } from "../core/rng";
-import { Hyper } from "./hyper";
+import { Hyper, planeName } from "./hyper";
 import type { CellVisual, Hint, HyperClue, Preset, PuzzleData, PuzzleGame, PuzzleType, Status } from "./types";
 
 interface TentData extends PuzzleData {
@@ -241,7 +241,7 @@ class TentsGame implements PuzzleGame {
       if (c.open > 0 && c.current === c.target) {
         const cells = g.hyperplane(c.axis, c.k).filter((i) => this.st[i] === 0 && !this.isTree[i]);
         this.hintCells = cells;
-        return { cells, text: `Hypervlak ${"xyzw"[c.axis]} = ${c.k} is al vol: de rest is gras.` };
+        return { cells, text: `${planeName(g.D, c.axis)} ${"xyzw"[c.axis]} = ${c.k} is al vol: de rest is gras.` };
       }
     }
     for (let i = 0; i < g.count; i++) {
@@ -282,9 +282,10 @@ export const Tents: PuzzleType = {
   presets,
   rules(dim) {
     return {
-      goal: "Zet naast elke boom precies één tent.",
+      goal: "Geef elke boom zijn eigen tent.",
       rules: [
-        `Een tent staat direct naast zijn boom (één van de ${2 * dim} directe buren).`,
+        `Er zijn evenveel tenten als bomen. Elke tent hoort bij één boom en staat er direct naast (één van de ${2 * dim} directe buren).`,
+        "Let op: een boom mag óók naast de tent van een andere boom staan.",
         "Tenten raken elkaar nergens, ook niet schuin.",
         `Elk getal zegt hoeveel tenten er in die ${["", "", "rij of kolom", "laag (een heel vlak van de kubus)", "3D-plak (een hele kubus)"][dim]} staan.`,
         "Klik: leeg → tent → gras → leeg.",
