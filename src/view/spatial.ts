@@ -3,25 +3,11 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
 import type { Grid } from "../core/grid";
 import type { CellVisual, EdgeMark } from "../puzzles/types";
 import { AXIS_COLORS, easeInOut, project4, rotate4, type Rot4, type Vec4, ZERO_ROT } from "./math4d";
+import { layoutsFor, type Layout } from "./layouts";
 import { Stage } from "./stage";
 import { haloTexture, iconTexture, labelTexture, setTextureUpdateHook } from "./textures";
 
-export type Layout = "flat" | "cube" | "layers" | "slices" | "boards" | "tesseract";
-
-export const LAYOUT_LABEL: Record<Layout, string> = {
-  flat: "Vlak",
-  cube: "Kubus",
-  layers: "Lagen",
-  slices: "Plakjes",
-  boards: "Borden",
-  tesseract: "Tesseract",
-};
-
-export function layoutsFor(D: number): Layout[] {
-  if (D <= 2) return ["flat"];
-  if (D === 3) return ["cube", "layers"];
-  return ["tesseract", "slices", "boards"];
-}
+export { LAYOUT_LABEL, layoutsFor, type Layout } from "./layouts";
 
 export interface SpatialOptions {
   interactive?: boolean;

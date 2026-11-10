@@ -2,7 +2,7 @@ import { sfx } from "../core/audio";
 import { store } from "../core/store";
 import { nextStep, stepById } from "../course/curriculum";
 import { LESSON_BY_ID } from "../course/lessons";
-import { webglAvailable } from "../view/stage";
+import { webglAvailable } from "../view/webgl";
 import { h, type Screen, UI } from "./dom";
 import { stepHref } from "./nav";
 import { createWidget, type Widget } from "./widgets";

@@ -6,7 +6,7 @@ import { nextStep, stepById } from "../course/curriculum";
 import { DB_PRESETS, DotsBoxes } from "../games/dotsboxes";
 import { GraphView, type GEdge, type GFace, type GNode } from "../view/graph";
 import { AXIS_COLORS, type Vec4 } from "../view/math4d";
-import { webglAvailable } from "../view/stage";
+import { webglAvailable } from "../view/webgl";
 import { confetti, dimBadge, h, type Screen, UI } from "./dom";
 import { stepHref } from "./nav";
 

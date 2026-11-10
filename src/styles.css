@@ -2625,3 +2625,15 @@ details.rules:not([open]) summary {
     height: 74px;
   }
 }
+
+/* onderdelen die later geladen worden (3D) */
+.screen.lazy {
+  min-height: 70vh;
+  display: grid;
+  place-items: center;
+}
+.space-wait {
+  position: absolute;
+  inset: 0;
+  align-content: center;
+}

@@ -1,10 +1,9 @@
 import { store } from "../core/store";
 import { ALL_STEPS } from "../course/curriculum";
 import { ALL_TYPES } from "../puzzles/registry";
-import { webglAvailable } from "../view/stage";
+import { webglAvailable } from "../view/webgl";
 import { h, type Screen, UI } from "./dom";
 import { stepHref } from "./nav";
-import { heroTesseract } from "./widgets";
 
 export function homeScreen(): Screen {
   const done = store.doneSteps();
@@ -75,9 +74,27 @@ export function homeScreen(): Screen {
       h("footer", { class: "home-foot" }, "Puzzel⁴ · gemaakt om de vierde dimensie te leren voelen · voortgang wordt alleen in je browser bewaard"),
     ),
   );
-  let v: ReturnType<typeof heroTesseract> | null = null;
-  if (webglAvailable()) requestAnimationFrame(() => (v = heroTesseract(hero)));
-  return { el: root, dispose: () => v?.dispose() };
+  // de draaiende tesseract (met de 3D-bibliotheek) komt pas na het eerste beeld
+  let v: { dispose(): void } | null = null;
+  let gone = false;
+  if (webglAvailable()) {
+    const start = () =>
+      void import("./widgets").then(
+        (m) => {
+          if (!gone) v = m.heroTesseract(hero);
+        },
+        () => undefined, // zonder hero werkt de pagina ook
+      );
+    if ("requestIdleCallback" in window) requestIdleCallback(start, { timeout: 1500 });
+    else setTimeout(start, 200);
+  }
+  return {
+    el: root,
+    dispose: () => {
+      gone = true;
+      v?.dispose();
+    },
+  };
 }
 
 function fact(big: string, label: string, text: string) {
