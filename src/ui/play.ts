@@ -8,8 +8,9 @@ import type { HyperClue, PuzzleGame } from "../puzzles/types";
 import { sizeLabel } from "../puzzles/types";
 import { FlatBoard } from "../view/flat";
 import { AXIS_COLORS } from "../view/math4d";
-import { LAYOUT_LABEL, layoutsFor, SpatialView, type Layout } from "../view/spatial";
-import { webglAvailable } from "../view/stage";
+import { LAYOUT_LABEL, layoutsFor, type Layout } from "../view/layouts";
+import type { SpatialView } from "../view/spatial";
+import { webglAvailable } from "../view/webgl";
 import { askConfirm, confetti, dimBadge, fmtTime, h, type Screen, toast, UI } from "./dom";
 import { stepHref } from "./nav";
 
@@ -229,9 +230,36 @@ export function playScreen(p: PlayParams): Screen {
     cleanups.push(() => ro.disconnect());
   }
 
+  /** De ruimteweergave (met de 3D-bibliotheek) wordt pas geladen als je hem opent. */
+  let spaceLoad: Promise<void> | null = null;
   function ensureSpace() {
-    if (space) return;
-    space = new SpatialView(spacePane, game.grid, {
+    if (space || spaceLoad) return;
+    const wait = h("div", { class: "loading space-wait" }, h("div", { class: "spinner", html: UI.tesseract }), h("p", {}, "3D-weergave laden…"));
+    spacePane.appendChild(wait);
+    spaceLoad = import("../view/spatial").then(
+      (m) => {
+        wait.remove();
+        if (disposed) return;
+        buildSpace(m.SpatialView);
+        // wat intussen veranderd kan zijn: selectie, focus, markeringen
+        paintSel();
+        applyHL();
+        requestAnimationFrame(() => space?.resize());
+      },
+      (err) => {
+        console.error(err);
+        spaceLoad = null;
+        wait.innerHTML = "";
+        wait.append(
+          h("p", {}, "De 3D-weergave kon niet laden. Controleer je verbinding."),
+          h("button", { class: "btn ghost", onclick: () => (wait.remove(), ensureSpace()) }, "Opnieuw proberen"),
+        );
+      },
+    );
+  }
+
+  function buildSpace(SpatialViewCtor: typeof SpatialView) {
+    space = new SpatialViewCtor(spacePane, game.grid, {
       accent: T.accent,
       cellScale: T.id === "maze" ? 0.42 : 1,
       tintByW: true,
