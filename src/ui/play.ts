@@ -1,8 +1,8 @@
 import { sfx } from "../core/audio";
-import { randomSeed } from "../core/rng";
+import { hashString, randomSeed } from "../core/rng";
 import { store } from "../core/store";
 import { nextStep, stepById } from "../course/curriculum";
-import { generatePuzzle } from "../gen/client";
+import { GenerateTimeout, generatePuzzle } from "../gen/client";
 import { presetById } from "../puzzles/registry";
 import type { HyperClue, PuzzleGame } from "../puzzles/types";
 import { sizeLabel } from "../puzzles/types";
@@ -12,7 +12,7 @@ import { LAYOUT_LABEL, layoutsFor, type Layout } from "../view/layouts";
 import type { SpatialView } from "../view/spatial";
 import { webglAvailable } from "../view/webgl";
 import { askConfirm, confetti, dimBadge, fmtTime, h, type Screen, toast, UI } from "./dom";
-import { stepHref } from "./nav";
+import { go, stepHref } from "./nav";
 
 export interface PlayParams {
   type: string;
@@ -96,9 +96,12 @@ export function playScreen(p: PlayParams): Screen {
   chromeRO.observe(dock);
   cleanups.push(() => chromeRO.disconnect());
 
+  /** Pas opslaan als er echt gespeeld is; `sig` herkent of het nog dezelfde puzzel is. */
+  let touched = false;
+  let sig = "";
   function save() {
-    if (!game || solved) return;
-    store.saveGame(saveKey, game.getState(), seconds);
+    if (!game || solved || !touched) return;
+    store.saveGame(saveKey, game.getState(), seconds, sig);
   }
 
   /* ---------- regels ---------- */
@@ -134,14 +137,22 @@ export function playScreen(p: PlayParams): Screen {
     .then((data) => {
       if (disposed) return;
       game = T.create(data, { fog: p.fog });
+      sig = hashString(JSON.stringify(data)).toString(36);
       const saved = store.loadGame(saveKey);
-      if (saved) {
+      if (saved && saved.sig && saved.sig !== sig) {
+        // opgeslagen stand hoort bij een eerdere versie van deze puzzel
+        store.clearGame(saveKey);
+      } else if (saved) {
+        const fresh = JSON.stringify(game.getState());
         try {
           game.setState(saved.s);
+          game.check(); // een kapotte opslag valt hier door de mand
           seconds = saved.t;
           timerEl.textContent = fmtTime(seconds);
+          touched = true;
         } catch {
-          /* oude opslag */
+          game.setState(JSON.parse(fresh));
+          store.clearGame(saveKey);
         }
       }
       loading.remove();
@@ -149,7 +160,19 @@ export function playScreen(p: PlayParams): Screen {
       running = true;
     })
     .catch((e) => {
-      loading.innerHTML = `<p>Er ging iets mis bij het bouwen van de puzzel.</p><small>${String(e)}</small>`;
+      console.error(e);
+      if (disposed) return;
+      loading.innerHTML = "";
+      const slow = e instanceof GenerateTimeout;
+      loading.append(
+        h("p", {}, slow ? "Het bouwen van deze puzzel duurde te lang." : "Er ging iets mis bij het bouwen van de puzzel."),
+        h(
+          "div",
+          { class: "solved-actions" },
+          h("button", { class: "btn ghost", onclick: () => go(location.hash) }, "Opnieuw proberen"),
+          step ? h("a", { class: "btn primary", href: "#/cursus" }, "Naar de cursus") : h("a", { class: "btn primary", href: `#/speel/${p.type}/${p.preset}/${randomSeed()}${p.fog ? "?fog=1" : ""}` }, "Andere puzzel"),
+        ),
+      );
     });
 
   function build() {
@@ -544,6 +567,8 @@ export function playScreen(p: PlayParams): Screen {
 
   /* ---------- dock ---------- */
   const padBtns: HTMLButtonElement[] = [];
+  let undoBtn: HTMLButtonElement | null = null;
+  let redoBtn: HTMLButtonElement | null = null;
   const dpad: { a: number; d: number; b: HTMLButtonElement }[] = [];
   const navBtns: { a: number; d: number; b: HTMLButtonElement }[] = [];
   let focusMode: "all" | "lines" | "board" = "all";
@@ -555,12 +580,9 @@ export function playScreen(p: PlayParams): Screen {
     const actions = h("div", { class: "actions" });
     const act = (icon: string, label: string, fn: () => void, extra = "") =>
       h("button", { class: "action " + extra, html: icon + `<span>${label}</span>`, onclick: fn, "aria-label": label, title: label });
-    actions.append(
-      act(UI.undo, "Terug", doUndo),
-      act(UI.redo, "Opnieuw", doRedo),
-      act(UI.hint, "Hint", doHint),
-      act(UI.reset, "Begin", doReset),
-    );
+    undoBtn = act(UI.undo, "Terug", doUndo);
+    redoBtn = act(UI.redo, "Opnieuw", doRedo);
+    actions.append(undoBtn, redoBtn, act(UI.hint, "Hint", doHint), act(UI.reset, "Begin", doReset));
     if (game.input === "number") {
       const pad = h("div", { class: "pad" });
       const syms = game.symbols ?? [];
@@ -678,14 +700,16 @@ export function playScreen(p: PlayParams): Screen {
     if (!(await askConfirm("Deze puzzel opnieuw beginnen?", "Opnieuw beginnen"))) return;
     snapshot();
     void generatePuzzle(p.type, p.preset, p.seed).then((data) => {
+      if (disposed) return;
       const g2 = T.create(data, { fog: p.fog });
       game.setState(g2.getState());
       seconds = 0;
       if (game.focus) sel = game.focus();
       hintMsg = "";
       store.clearGame(saveKey);
-      renderAll();
-    });
+      touched = false;
+      renderAll(false);
+    }, () => toast("Opnieuw beginnen lukte niet.", "warn"));
   }
 
   function onCell(i: number, button: number) {
@@ -866,8 +890,11 @@ export function playScreen(p: PlayParams): Screen {
       updateExits();
     }
     updateDpad();
+    if (undoBtn) undoBtn.disabled = !undo.length || solved;
+    if (redoBtn) redoBtn.disabled = !redo.length || solved;
     if (fromAction) {
       running = true;
+      touched = true;
       save();
     }
     if (st.solved && !solved) win();
@@ -904,6 +931,22 @@ export function playScreen(p: PlayParams): Screen {
       ),
     );
     const ov = h("div", { class: "solved" }, card);
+    // het opgeloste bord bekijken: het venster gaat weg, de keuzes verhuizen naar de knoppenbalk
+    card.appendChild(
+      h(
+        "button",
+        {
+          class: "btn-link",
+          onclick: () => {
+            const actions = card.querySelector(".solved-actions")!;
+            ov.remove();
+            dock.innerHTML = "";
+            dock.append(h("div", { class: "solved-bar" }, h("span", {}, `Opgelost in ${fmtTime(seconds)}`), actions));
+          },
+        },
+        "Bord bekijken",
+      ),
+    );
     setTimeout(() => !disposed && root.appendChild(ov), 650);
   }
 
