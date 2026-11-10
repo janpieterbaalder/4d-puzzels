@@ -1,5 +1,5 @@
 import "./styles.css";
-import { h, type Screen, UI } from "./ui/dom";
+import { h, type Screen, toast, UI } from "./ui/dom";
 import { homeScreen } from "./ui/home";
 import { courseScreen } from "./ui/course";
 import { freeScreen } from "./ui/free";
@@ -91,11 +91,18 @@ function route() {
       case "instellingen":
         next = settingsScreen();
         break;
-      default:
+      case undefined:
         next = homeScreen();
+        break;
+      default:
+        throw new Error("onbekende pagina " + parts[0]);
     }
   } catch (e) {
+    // foute of verouderde link: naar de startpagina, mét melding en een kloppende adresbalk
     console.error(e);
+    toast(parts[0] === "speel" ? "Deze puzzel bestaat niet (meer)." : "Deze pagina bestaat niet.", "warn");
+    history.replaceState(null, "", "#/");
+    parts.length = 0;
     next = homeScreen();
   }
   current?.dispose();
@@ -107,4 +114,15 @@ function route() {
 }
 
 window.addEventListener("hashchange", route);
+// onverwachte fouten niet stil laten: één melding (niet bij elke herhaling)
+let lastErrorToast = 0;
+const onError = () => {
+  if (Date.now() - lastErrorToast < 8000) return;
+  lastErrorToast = Date.now();
+  toast("Er ging iets mis. Werkt iets niet meer, herlaad dan de pagina.", "warn", 6000);
+};
+window.addEventListener("error", (e) => {
+  if (e.error) onError(); // geen meldingen voor bv. een mislukt plaatje
+});
+window.addEventListener("unhandledrejection", onError);
 route();

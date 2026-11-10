@@ -7,7 +7,7 @@ function ac(): AudioContext | null {
   if (!store.settings().sound) return null;
   try {
     ctx ??= new (window.AudioContext || (window as any).webkitAudioContext)();
-    if (ctx.state === "suspended") void ctx.resume();
+    if (ctx.state === "suspended") ctx.resume().catch(() => undefined);
     return ctx;
   } catch {
     return null;

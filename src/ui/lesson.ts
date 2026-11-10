@@ -12,7 +12,10 @@ export function lessonScreen(id: string, stepId?: string): Screen {
   const step = stepId ? stepById(stepId) : null;
   const root = h("div", { class: "screen lesson" });
   if (!lesson) {
-    root.textContent = "Les niet gevonden.";
+    root.append(
+      h("header", { class: "topbar" }, h("a", { class: "round-btn", href: "#/cursus", "aria-label": "Terug", html: UI.back }), h("div", { class: "title" }, h("span", { class: "t-name" }, "Les niet gevonden"))),
+      h("div", { class: "loading" }, h("p", {}, "Deze les bestaat niet (meer)."), h("a", { class: "btn primary", href: "#/cursus" }, "Naar de cursus")),
+    );
     return { el: root, dispose() {} };
   }
   const stage = h("div", { class: "lesson-stage" });

@@ -3,7 +3,7 @@ import { store } from "../core/store";
 import { DB_PRESETS } from "../games/dotsboxes";
 import { ALL_TYPES, TYPES } from "../puzzles/registry";
 import { dimsOf, presetsFor, sizeLabel, type PuzzleType } from "../puzzles/types";
-import { dimBadge, h, type Screen, UI } from "./dom";
+import { dimBadge, fmtTime, h, type Screen, UI } from "./dom";
 
 export function freeScreen(openId?: string): Screen {
   const solved = store.solvedCount();
@@ -17,6 +17,35 @@ export function freeScreen(openId?: string): Screen {
       h("div", { class: "title" }, h("span", { class: "t-name" }, "Vrij spelen"), h("span", { class: "t-meta" }, "Kies een puzzel en een dimensie")),
     ),
   );
+  // verder met puzzels waar je mee bezig was (cursuspuzzels vind je terug in de cursus)
+  const resume = h("section", { class: "resume" });
+  const renderResume = () => {
+    resume.innerHTML = "";
+    const games = store
+      .recentGames()
+      .filter((g) => TYPES[g.type]?.presets.some((p) => p.id === g.preset) && !g.seed.startsWith("c-"))
+      .slice(0, 6);
+    if (!games.length) return;
+    const list = h("div", { class: "resume-list" });
+    for (const g of games) {
+      const t = TYPES[g.type];
+      const p = t.presets.find((x) => x.id === g.preset)!;
+      list.appendChild(
+        h(
+          "div",
+          { class: "resume-card", style: `--accent:${t.accent}` },
+          h("span", { class: "ic", html: t.icon }),
+          h("a", { href: `#/speel/${g.type}/${g.preset}/${g.seed}${g.fog ? "?fog=1" : ""}` }, h("b", { html: `${t.name} ${dimBadge(p.sizes.length)}` })),
+          h("small", {}, `${p.label}${g.fog ? " · doorsnede" : ""} · ${fmtTime(g.t)} gespeeld`),
+          h("button", { class: "rm", "aria-label": `${t.name} ${p.label} weggooien`, title: "Weggooien", html: UI.close, onclick: () => (store.clearGame(g.key), renderResume()) }),
+        ),
+      );
+    }
+    resume.append(h("h2", {}, "Verder spelen"), list);
+  };
+  renderResume();
+  root.appendChild(resume);
+
   const grid = h("div", { class: "type-grid" });
   for (const t of ALL_TYPES) {
     const dims = dimsOf(t);
@@ -48,6 +77,7 @@ export function freeScreen(openId?: string): Screen {
 
   let sheet: HTMLElement | null = null;
   function open(id: string) {
+    if (id !== "kamertje" && !TYPES[id]) return; // onbekende soort in de link
     sheet?.remove();
     sheet = id === "kamertje" ? duelSheet() : typeSheet(TYPES[id]);
     root.appendChild(sheet);

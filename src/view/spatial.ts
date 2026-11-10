@@ -66,7 +66,6 @@ export class SpatialView extends Stage {
   private fade: THREE.InstancedMesh;
   private kind: Uint8Array; // 0 verborgen, 1 solid, 2 glas
   private sprites: (THREE.Sprite | null)[];
-  private spriteMats = new Map<THREE.Texture, THREE.SpriteMaterial>();
   private halos: THREE.Sprite[] = [];
   private haloMat: THREE.SpriteMaterial;
   private group = new THREE.Group();
@@ -99,6 +98,7 @@ export class SpatialView extends Stage {
     this.fromScl = new Float32Array(N);
     this.kind = new Uint8Array(N);
     this.sprites = new Array(N).fill(null);
+    this.depthBuf = new Float32Array(N);
     this.scene.add(this.group);
 
     const geo = new RoundedBoxGeometry(0.9, 0.9, 0.9, 3, 0.16);
@@ -521,17 +521,16 @@ export class SpatialView extends Stage {
       let sp = this.sprites[i];
       if (tex) {
         if (!sp) {
-          sp = new THREE.Sprite();
+          sp = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false }));
           sp.renderOrder = 5;
           this.sprites[i] = sp;
           this.group.add(sp);
         }
-        let mat = this.spriteMats.get(tex);
-        if (!mat) {
-          mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
-          this.spriteMats.set(tex, mat);
+        // eigen materiaal per cel: zo kan een cijfer achterin vager zijn dan een cijfer vooraan
+        if (sp.material.map !== tex) {
+          sp.material.map = tex;
+          sp.material.needsUpdate = true;
         }
-        sp.material = mat;
         sp.visible = true;
       } else if (sp) sp.visible = false;
 
@@ -747,6 +746,8 @@ export class SpatialView extends Stage {
     return busy;
   }
 
+  private depthBuf = new Float32Array(0);
+
   /* ---------- kompas ---------- */
 
   private compassEl: HTMLDivElement | null = null;
@@ -817,15 +818,31 @@ export class SpatialView extends Stage {
     this.updateCompass();
     const cam = this.camera.position;
     const p = new THREE.Vector3();
+    let near = Infinity;
+    let far = 0;
+    const depth = this.depthBuf;
     for (let i = 0; i < this.grid.count; i++) {
       const sp = this.sprites[i];
       if (!sp || !sp.visible) continue;
       this.cellPosition(i, p);
       const s = this.scl[i] * (this.visuals[i]?.dim ? 0.7 : 1);
-      const dir = tmpV.copy(cam).sub(p).normalize();
+      const dir = tmpV.copy(cam).sub(p);
+      const d = dir.length();
+      depth[i] = d;
+      if (d < near) near = d;
+      if (d > far) far = d;
+      dir.divideScalar(d || 1);
       const solid = this.kind[i] === 1;
       // op volle kubussen het label vóór de dichtstbijzijnde hoek (√3 · halve ribbe ≈ 0.78) zetten
       sp.position.copy(p).addScaledVector(dir, solid ? s * 0.82 : s * 0.05);
+    }
+    // dieptewerking: cijfers achterin zijn vager, zodat overlappende cijfers uit elkaar te houden zijn
+    // (geschaald op de diepte van het hele model, zodat twee cijfers vlak achter elkaar nauwelijks verschillen)
+    const span = Math.max(far - near, 1.2 * this.lastFrameRadius, 1e-3);
+    for (let i = 0; i < this.grid.count; i++) {
+      const sp = this.sprites[i];
+      if (!sp || !sp.visible) continue;
+      sp.material.opacity = 1 - 0.45 * Math.min(1, (depth[i] - near) / span);
     }
     for (const h of this.halos) {
       if (!h.visible) continue;
@@ -946,7 +963,7 @@ export class SpatialView extends Stage {
 
   dispose() {
     setTextureUpdateHook(null);
-    for (const m of this.spriteMats.values()) m.dispose();
+    for (const sp of this.sprites) sp?.material.dispose();
     super.dispose();
   }
 }
