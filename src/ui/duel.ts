@@ -63,6 +63,7 @@ export function duelScreen(presetId: string, stepId?: string): Screen {
   let view: GraphView | null = null;
   let hover = -1;
   let busy = false;
+  let round = 0; // verhoogt bij elk nieuw spel: uitgestelde beurten van het vorige spel vervallen
   let lastMove = -1;
   let layoutT = 0; // 0 = projectie, 1 = twee kubussen
   let layoutTarget = 0;
@@ -192,12 +193,13 @@ export function duelScreen(presetId: string, stepId?: string): Screen {
     if (game.over) return finish();
     if (game.turn === 2) {
       busy = true;
-      setTimeout(cpuStep, 520);
+      const r = round;
+      setTimeout(() => cpuStep(r), 520);
     }
   }
 
-  function cpuStep() {
-    if (disposed) return;
+  function cpuStep(r: number) {
+    if (disposed || r !== round || game.turn !== 2) return;
     const e = game.aiMove(level, rng);
     if (e < 0) return;
     const done = game.play(e);
@@ -208,7 +210,7 @@ export function duelScreen(presetId: string, stepId?: string): Screen {
       busy = false;
       return finish();
     }
-    if (game.turn === 2) setTimeout(cpuStep, 420);
+    if (game.turn === 2) setTimeout(() => cpuStep(r), 420);
     else busy = false;
     paint();
   }
@@ -240,10 +242,12 @@ export function duelScreen(presetId: string, stepId?: string): Screen {
         ),
       ),
     );
-    setTimeout(() => !disposed && root.appendChild(ov), 500);
+    const r = round;
+    setTimeout(() => !disposed && r === round && root.appendChild(ov), 500);
   }
 
   function restart() {
+    round++;
     game = new DotsBoxes(preset.dots);
     busy = false;
     lastMove = -1;

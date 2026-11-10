@@ -158,7 +158,10 @@ function generate(preset: Preset, seed: string): HitData {
     for (let it = 0; it < 300; it++) {
       const r = solveHitori(g, values, 2, 40000);
       if (r.count === 1) {
-        return { type: "hitori", preset: preset.id, seed, sizes: preset.sizes, values, shaded: [...shaded] };
+        // De oplossing is wat de oplosser vindt, niet het patroon waarmee we begonnen: een zwarte cel waarvan het
+        // getal (na het verschuiven van getallen) nergens meer dubbel staat, hoort wit te zijn. Anders spreken de
+        // hints ("altijd wit") en de voortgang de opgeslagen oplossing tegen.
+        return { type: "hitori", preset: preset.id, seed, sizes: preset.sizes, values, shaded: [...r.sol!].map((s) => (s === 1 ? 1 : 0)) };
       }
       if (r.count > 2 || r.count === 0) break;
       const alt = r.sols.find((B) => B.some((b, i) => (b === 1) !== (shaded[i] === 1)));
@@ -334,6 +337,7 @@ export const Hitori: PuzzleType = {
       rules: [
         "In elke lijn (in elke richting) komt elk getal hoogstens één keer voor bij de niet-zwarte cellen.",
         "Zwarte cellen mogen geen directe buren van elkaar zijn.",
+        "Maak alleen zwart wat nodig is: een getal dat in geen enkele lijn dubbel staat, blijft wit.",
         "Alle niet-zwarte cellen vormen samen één aaneengesloten geheel.",
         "Klik: leeg → zwart → rondje (zeker wit) → leeg.",
       ],

@@ -648,6 +648,7 @@ export function playScreen(p: PlayParams): Screen {
     redo = [];
   }
   function doUndo() {
+    if (solved) return;
     const s = undo.pop();
     if (!s) return;
     redo.push(JSON.stringify(game.getState()));
@@ -657,6 +658,7 @@ export function playScreen(p: PlayParams): Screen {
     renderAll();
   }
   function doRedo() {
+    if (solved) return;
     const s = redo.pop();
     if (!s) return;
     undo.push(JSON.stringify(game.getState()));
@@ -665,7 +667,7 @@ export function playScreen(p: PlayParams): Screen {
     renderAll();
   }
   function doHint() {
-    if (!game.hint) return;
+    if (!game.hint || solved) return;
     const hnt = game.hint();
     sfx.hint();
     hintMsg = hnt ? hnt.text : "Geen hint nodig: alles klopt tot nu toe.";
@@ -732,7 +734,7 @@ export function playScreen(p: PlayParams): Screen {
   }
 
   function enterValue(v: number) {
-    if (sel < 0 || !game.enter) return;
+    if (sel < 0 || !game.enter || solved) return;
     if (game.isFixed?.(sel)) {
       sfx.bump();
       return;
@@ -842,12 +844,13 @@ export function playScreen(p: PlayParams): Screen {
         need[sol[i]]++;
         if (vals[i]) have[vals[i]]++;
       }
-      for (let v = 1; v <= padBtns.length; v++) if (need[v] > 0 && have[v] >= need[v]) done.add(v);
+      // ook cijfers die in deze puzzel helemaal niet voorkomen (bv. 5 bij Tectonic zonder gebied van 5 cellen)
+      for (let v = 1; v <= padBtns.length; v++) if (have[v] >= need[v]) done.add(v);
     }
     padBtns.forEach((b, k) => {
       b.classList.toggle("done", done.has(k + 1));
       b.classList.toggle("used", !done.has(k + 1) && used.has(k + 1));
-      b.title = done.has(k + 1) ? "Dit cijfer staat overal" : "";
+      b.title = done.has(k + 1) ? "Dit cijfer is klaar of komt in deze puzzel niet voor" : "";
     });
   }
 

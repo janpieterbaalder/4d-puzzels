@@ -189,7 +189,8 @@ class MazeGame implements PuzzleGame {
     return {
       solved: this.pos === this.data.goal,
       errors: [],
-      progress: 1 - d / Math.max(1, this.data.par),
+      // je kunt verder van het doel raken dan de start was: nooit onder 0%
+      progress: Math.max(0, Math.min(1, 1 - d / Math.max(1, this.data.par))),
       info: `${this.steps} stappen · kortste route ${this.data.par}`,
     };
   }

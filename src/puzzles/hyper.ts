@@ -39,3 +39,9 @@ export class Hyper {
     return out;
   }
 }
+
+/** Naam van een hypervlak in gewone taal: kolom/rij in 2D, laag in 3D, 3D-plak in 4D. */
+export function planeName(D: number, axis: number): string {
+  if (D === 2) return axis === 0 ? "Kolom" : "Rij";
+  return D === 3 ? "Laag" : "3D-plak";
+}

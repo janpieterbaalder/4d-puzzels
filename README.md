@@ -59,7 +59,13 @@ Alle puzzels worden in de browser gegenereerd (Web Worker), reproduceerbaar via 
 - "makkelijk/normaal" vereist oplosbaarheid met alleen logische stappen (propagatie, geen gokken), "moeilijk" alleen uniciteit;
 - Lichtjes: oplossing en minimaal aantal drukken via lineaire algebra over GF(2).
 
-`npm test` genereert elke variant met meerdere seeds en controleert dat de puzzel deterministisch is, de oplossing alle regels haalt en als opgelost wordt herkend.
+`npm test` genereert elke variant met meerdere seeds (plus alle cursuspuzzels) en controleert onder meer:
+
+- de puzzel is deterministisch en de oplossing wordt herkend;
+- de oplossing voldoet aan de regels, die in `tests/logic.test.ts` nog eens los van de spelcode zijn uitgeschreven;
+- er is precies één oplossing: met de oplosser van het spel, en voor kleine puzzels ook met een eigen, eenvoudige teller;
+- een afwijking van de oplossing telt niet als opgelost, en hints beweren nooit iets wat niet klopt;
+- Lichtjes: het genoemde minimum is echt minimaal; Doolhof: de kortste route klopt; Kamertje verhuren: telling, beurtwissel en computerzetten in hele partijen.
 
 ## Ontwikkelen
 
