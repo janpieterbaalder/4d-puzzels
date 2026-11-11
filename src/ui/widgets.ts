@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { ConvexGeometry } from "three/examples/jsm/geometries/ConvexGeometry.js";
 import { Grid } from "../core/grid";
+import { reducedMotion } from "../core/motion";
 import type { WidgetSpec } from "../course/lessons";
 import type { CellVisual } from "../puzzles/types";
 import { GraphView, hypercube, type GEdge, type GNode } from "../view/graph";
@@ -590,8 +591,9 @@ export function heroTesseract(host: HTMLElement): GraphView {
     verts.map((p) => ({ p: [...p] as Vec4, color: "#ffffff", size: 0.055 })),
     edges.map(([a, b, ax]) => ({ a, b, color: AXIS_COLORS[ax], radius: 0.022, glow: 1.2 })),
   );
-  v.rot = { xy: 0, xz: 0.6, yz: 0.35, xw: 0, yw: 0, zw: 0 };
-  v.spin = { xw: 0.32, zw: 0.13, xz: 0.05 };
+  v.rot = { xy: 0, xz: 0.6, yz: 0.35, xw: 0.5, yw: 0, zw: 0.2 };
+  // 'minder beweging': een stilstaande tesseract
+  if (!reducedMotion()) v.spin = { xw: 0.32, zw: 0.13, xz: 0.05 };
   v.frame(3.1, new THREE.Vector3(0, 0.1, 1));
   return v;
 }

@@ -1,5 +1,8 @@
 import "./styles.css";
-import { h, type Screen, toast, UI } from "./ui/dom";
+import { LESSON_BY_ID } from "./course/lessons";
+import { DB_PRESETS } from "./games/dotsboxes";
+import { TYPES } from "./puzzles/registry";
+import { announce, h, type Screen, toast, UI, watchToggles } from "./ui/dom";
 import { homeScreen } from "./ui/home";
 import { courseScreen } from "./ui/course";
 import { freeScreen } from "./ui/free";
@@ -7,7 +10,36 @@ import { playScreen } from "./ui/play";
 import { settingsScreen } from "./ui/settings";
 
 const app = document.getElementById("app")!;
+app.tabIndex = -1; // zodat de focus na een schermwissel bovenaan het nieuwe scherm begint
 let current: Screen | null = null;
+let firstRoute = true;
+watchToggles();
+
+/** Titel van het tabblad (en voor schermlezers) per scherm. */
+function titleFor(parts: string[]): string {
+  const base = "Puzzel⁴";
+  switch (parts[0]) {
+    case "cursus":
+      return `De 4D-cursus · ${base}`;
+    case "vrij":
+      return `Vrij spelen · ${base}`;
+    case "speel": {
+      const t = TYPES[parts[1]];
+      const p = t?.presets.find((x) => x.id === parts[2]);
+      return t && p ? `${t.name} ${p.sizes.length}D · ${base}` : base;
+    }
+    case "les":
+      return `${LESSON_BY_ID[parts[1]]?.title ?? "Les"} · ${base}`;
+    case "kamertje": {
+      const p = DB_PRESETS.find((x) => x.id === parts[1]);
+      return `Kamertje verhuren${p ? ` ${p.dots.length}D` : ""} · ${base}`;
+    }
+    case "instellingen":
+      return `Instellingen · ${base}`;
+    default:
+      return `${base} · puzzelen in vier dimensies`;
+  }
+}
 
 function parse(): { parts: string[]; q: URLSearchParams } {
   const raw = location.hash.replace(/^#\/?/, "");
@@ -110,7 +142,14 @@ function route() {
   current = next;
   app.appendChild(next.el);
   document.body.dataset.screen = parts[0] ?? "home";
+  document.title = titleFor(parts);
   window.scrollTo(0, 0);
+  // na een schermwissel: focus naar het nieuwe scherm en de titel voorlezen (niet bij het eerste laden)
+  if (!firstRoute) {
+    app.focus({ preventScroll: true });
+    announce(document.title);
+  }
+  firstRoute = false;
 }
 
 window.addEventListener("hashchange", route);

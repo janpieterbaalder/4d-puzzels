@@ -44,6 +44,8 @@ export class FlatBoard {
     this.view = Array.from({ length: this.grid.D }, (_, a) => a);
     this.el = document.createElement("div");
     this.el.className = "flat" + (this.lined ? " lined" : " tiles") + ` d${this.grid.D}`;
+    this.el.setAttribute("role", "group");
+    this.el.setAttribute("aria-label", "Speelbord");
     host.appendChild(this.el);
     this.bindInput();
     this.build();

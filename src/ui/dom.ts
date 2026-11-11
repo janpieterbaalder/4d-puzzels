@@ -1,4 +1,6 @@
 /** Kleine DOM-helpers en UI-iconen. */
+import { reducedMotion } from "../core/motion";
+
 export function h<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   attrs: Record<string, string | number | boolean | ((e: any) => void) | undefined> = {},
@@ -14,7 +16,101 @@ export function h<K extends keyof HTMLElementTagNameMap>(
     else el.setAttribute(k, v === true ? "" : String(v));
   }
   for (const c of children) if (c !== null && c !== undefined && c !== false) el.append(c);
+  // knop met alleen een icoon: de tooltip is ook de naam voor schermlezers
+  if (tag === "button" && typeof attrs.title === "string" && attrs.title && !attrs["aria-label"] && !el.textContent?.trim()) el.setAttribute("aria-label", attrs.title);
   return el;
+}
+
+/**
+ * Venster over de pagina heen. Krijgt role=dialog, de focus gaat erin (en blijft er met Tab in),
+ * Escape of een klik ernaast sluit het, en daarna gaat de focus terug naar waar hij was.
+ */
+export function modal(sheet: HTMLElement, label: string, opts: { onClose?: () => void; dismissable?: boolean } = {}): { el: HTMLElement; close(): void } {
+  const before = document.activeElement as HTMLElement | null;
+  const el = h("div", { class: "modal", role: "dialog", "aria-modal": "true", "aria-label": label });
+  el.appendChild(sheet);
+  let open = true;
+  const focusables = () =>
+    [...el.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), [tabindex]:not([tabindex="-1"])')].filter((x) => x.offsetParent !== null);
+  const stop = () => {
+    open = false;
+    document.removeEventListener("keydown", onKey, true);
+  };
+  const close = () => {
+    if (!open) return;
+    stop();
+    el.remove();
+    if (before?.isConnected) before.focus({ preventScroll: true });
+    opts.onClose?.();
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (!el.isConnected) return stop(); // het scherm eronder is al vervangen
+    if (e.key === "Escape" && opts.dismissable !== false) {
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+    } else if (e.key === "Tab") {
+      const f = focusables();
+      if (!f.length) return;
+      const first = f[0];
+      const last = f[f.length - 1];
+      const at = document.activeElement;
+      if (!el.contains(at)) (e.preventDefault(), first.focus());
+      else if (e.shiftKey && at === first) (e.preventDefault(), last.focus());
+      else if (!e.shiftKey && at === last) (e.preventDefault(), first.focus());
+    }
+  };
+  document.addEventListener("keydown", onKey, true);
+  if (opts.dismissable !== false) el.addEventListener("click", (e) => e.target === el && close());
+  requestAnimationFrame(() => {
+    if (!open || !el.isConnected) return;
+    const target = el.querySelector<HTMLElement>("[data-autofocus]") ?? focusables()[0];
+    if (target) target.focus({ preventScroll: true });
+    else {
+      sheet.tabIndex = -1;
+      sheet.focus({ preventScroll: true });
+    }
+  });
+  return { el, close };
+}
+
+/** Is er een venster open? Dan horen toetsen niet bij het spel eronder. */
+export function modalOpen(): boolean {
+  return !!document.querySelector(".modal, .solved");
+}
+
+/** Schermlezers: zeg iets zonder dat het zichtbaar is. */
+export function announce(msg: string) {
+  let el = document.getElementById("announcer");
+  if (!el) {
+    el = h("div", { id: "announcer", class: "sr-only", "aria-live": "polite", "aria-atomic": "true" });
+    document.body.appendChild(el);
+  }
+  el.textContent = "";
+  // leeg → tekst: zo wordt dezelfde melding ook een tweede keer voorgelezen
+  requestAnimationFrame(() => (el!.textContent = msg));
+}
+
+/**
+ * Houd aria-pressed gelijk aan de klasse "on" voor knoppen in een keuzebalk (.seg) en voor aan/uit-knoppen.
+ * Eén waarnemer voor de hele app, zodat elke keuzebalk vanzelf klopt voor schermlezers.
+ */
+export function watchToggles() {
+  const sync = (b: Element) => b.setAttribute("aria-pressed", String(b.classList.contains("on")));
+  const isToggle = (b: Element) => b.tagName === "BUTTON" && (!!b.parentElement?.classList.contains("seg") || b.hasAttribute("aria-pressed"));
+  new MutationObserver((muts) => {
+    for (const m of muts) {
+      if (m.type === "attributes") {
+        const t = m.target as Element;
+        if (isToggle(t) && t.getAttribute("aria-pressed") !== String(t.classList.contains("on"))) sync(t);
+      } else
+        for (const n of m.addedNodes) {
+          if (!(n instanceof Element)) continue;
+          if (isToggle(n)) sync(n);
+          for (const b of n.querySelectorAll(".seg > button")) sync(b);
+        }
+    }
+  }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
 }
 
 export interface Screen {
@@ -81,25 +177,33 @@ export function toast(msg: string, kind: "info" | "good" | "warn" = "info", ms =
 /** Bevestigingsdialoog in de pagina zelf (window.confirm is niet overal beschikbaar). */
 export function askConfirm(msg: string, ok = "Ja", cancel = "Annuleren"): Promise<boolean> {
   return new Promise((resolve) => {
-    const close = (v: boolean) => {
-      dlg.remove();
-      resolve(v);
+    let answer = false;
+    const done = (v: boolean) => {
+      answer = v;
+      m.close();
     };
-    const dlg = h(
-      "div",
-      { class: "modal", onclick: (e: Event) => e.target === dlg && close(false) },
+    const m = modal(
       h(
         "div",
         { class: "sheet confirm" },
         h("p", { class: "confirm-msg" }, msg),
-        h("div", { class: "solved-actions" }, h("button", { class: "btn ghost", onclick: () => close(false) }, cancel), h("button", { class: "btn primary", onclick: () => close(true) }, ok)),
+        h(
+          "div",
+          { class: "solved-actions" },
+          // focus op annuleren: Enter mag niet per ongeluk iets wissen
+          h("button", { class: "btn ghost", "data-autofocus": true, onclick: () => done(false) }, cancel),
+          h("button", { class: "btn primary", onclick: () => done(true) }, ok),
+        ),
       ),
+      msg,
+      { onClose: () => resolve(answer) },
     );
-    document.body.appendChild(dlg);
+    document.body.appendChild(m.el);
   });
 }
 
 export function confetti(host: HTMLElement) {
+  if (reducedMotion()) return;
   const colors = ["#ff7a8a", "#5ef2b4", "#6cb8ff", "#d77bff", "#ffd166"];
   const box = h("div", { class: "confetti" });
   for (let k = 0; k < 70; k++) {
