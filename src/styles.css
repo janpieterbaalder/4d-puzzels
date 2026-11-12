@@ -20,7 +20,7 @@
   --glass-hi: rgba(255, 255, 255, 0.06);
   --text: #eef0fb;
   --muted: #9aa0bd;
-  --faint: #5d6385;
+  --faint: #8087ad; /* minstens 4,5:1 op de donkere achtergronden */
   --accent: #b9a8ff;
   --axis-x: #ff7a8a;
   --axis-y: #5ef2b4;
@@ -398,6 +398,8 @@ kbd {
 /* ================= home ================= */
 .home {
   position: relative;
+  /* de tesseract steekt rechts buiten beeld; clip voorkomt dat de pagina daardoor breder wordt dan het scherm */
+  overflow-x: clip;
 }
 .hero-canvas {
   position: absolute;
@@ -2744,4 +2746,20 @@ details.rules:not([open]) summary {
   flex-wrap: wrap;
   gap: 8px;
   padding: 4px 0 2px;
+}
+
+/* alleen voor schermlezers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+#app:focus {
+  outline: none;
 }

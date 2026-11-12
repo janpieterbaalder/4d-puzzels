@@ -3,7 +3,7 @@ import { store } from "../core/store";
 import { DB_PRESETS } from "../games/dotsboxes";
 import { ALL_TYPES, TYPES } from "../puzzles/registry";
 import { dimsOf, presetsFor, sizeLabel, type PuzzleType } from "../puzzles/types";
-import { dimBadge, fmtTime, h, type Screen, UI } from "./dom";
+import { dimBadge, fmtTime, h, modal, type Screen, UI } from "./dom";
 
 export function freeScreen(openId?: string): Screen {
   const solved = store.solvedCount();
@@ -75,17 +75,21 @@ export function freeScreen(openId?: string): Screen {
   );
   root.appendChild(grid);
 
-  let sheet: HTMLElement | null = null;
+  let sheet: { el: HTMLElement; close(): void } | null = null;
   function open(id: string) {
     if (id !== "kamertje" && !TYPES[id]) return; // onbekende soort in de link
-    sheet?.remove();
-    sheet = id === "kamertje" ? duelSheet() : typeSheet(TYPES[id]);
-    root.appendChild(sheet);
+    sheet?.close();
+    const m = modal(id === "kamertje" ? duelSheet() : typeSheet(TYPES[id]), id === "kamertje" ? "Kamertje verhuren" : TYPES[id].name, {
+      onClose: () => {
+        if (sheet === m) sheet = null;
+        if (location.hash !== "#/vrij" && location.hash.startsWith("#/vrij")) history.replaceState(null, "", "#/vrij");
+      },
+    });
+    sheet = m;
+    root.appendChild(m.el);
   }
   function close() {
-    sheet?.remove();
-    sheet = null;
-    if (location.hash !== "#/vrij") history.replaceState(null, "", "#/vrij");
+    sheet?.close();
   }
 
   function typeSheet(t: PuzzleType): HTMLElement {
@@ -131,14 +135,10 @@ export function freeScreen(openId?: string): Screen {
     render();
     return h(
       "div",
-      { class: "modal", onclick: (e: Event) => (e.target as HTMLElement).classList.contains("modal") && close() },
-      h(
-        "div",
-        { class: "sheet", style: `--accent:${t.accent}` },
-        h("header", {}, h("span", { class: "sh-ic", html: t.icon }), h("div", {}, h("h2", {}, t.name), h("p", {}, t.tagline)), h("button", { class: "round-btn", html: UI.close, "aria-label": "Sluiten", onclick: close })),
-        tabs,
-        body,
-      ),
+      { class: "sheet", style: `--accent:${t.accent}` },
+      h("header", {}, h("span", { class: "sh-ic", html: t.icon }), h("div", {}, h("h2", {}, t.name), h("p", {}, t.tagline)), h("button", { class: "round-btn", html: UI.close, "aria-label": "Sluiten", onclick: close })),
+      tabs,
+      body,
     );
   }
 
@@ -151,19 +151,15 @@ export function freeScreen(openId?: string): Screen {
     }
     return h(
       "div",
-      { class: "modal", onclick: (e: Event) => (e.target as HTMLElement).classList.contains("modal") && close() },
+      { class: "sheet", style: "--accent:#ff9a4a" },
       h(
-        "div",
-        { class: "sheet", style: "--accent:#ff9a4a" },
-        h(
-          "header",
-          {},
-          h("span", { class: "sh-ic", html: UI.duel }),
-          h("div", {}, h("h2", {}, "Kamertje verhuren"), h("p", {}, "Om de beurt een streep. Maak je een kamer af, dan is hij van jou en ben je nog een keer.")),
-          h("button", { class: "round-btn", html: UI.close, "aria-label": "Sluiten", onclick: close }),
-        ),
-        h("div", { class: "sheet-body" }, list),
+        "header",
+        {},
+        h("span", { class: "sh-ic", html: UI.duel }),
+        h("div", {}, h("h2", {}, "Kamertje verhuren"), h("p", {}, "Om de beurt een streep. Maak je een kamer af, dan is hij van jou en ben je nog een keer.")),
+        h("button", { class: "round-btn", html: UI.close, "aria-label": "Sluiten", onclick: close }),
       ),
+      h("div", { class: "sheet-body" }, list),
     );
   }
 

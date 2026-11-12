@@ -34,6 +34,12 @@ export function settingsScreen(): Screen {
     toast("Back-up teruggezet.", "good");
     location.hash = "#/";
   };
+  // Offline: na het eerste bezoek staat de hele app in de browser (zie scripts/sw.template.js).
+  const offline = h("small", { role: "status" }, "Wordt voorbereid…");
+  const sw = "serviceWorker" in navigator ? navigator.serviceWorker : null;
+  if (!sw) offline.textContent = "Deze browser ondersteunt dat niet.";
+  else if (!import.meta.env.PROD) offline.textContent = "Alleen in de gepubliceerde versie.";
+  else sw.ready.then(() => (offline.textContent = "Klaar. De app werkt op dit apparaat ook zonder internet."));
   const root = h(
     "div",
     { class: "screen settings" },
@@ -70,6 +76,7 @@ export function settingsScreen(): Screen {
           ),
         ),
       ),
+      h("div", { class: "setting" }, h("span", {}, h("b", {}, "Offline spelen"), offline)),
       h(
         "button",
         {

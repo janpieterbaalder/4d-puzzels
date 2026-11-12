@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import type { Grid } from "../core/grid";
+import { reducedMotion } from "../core/motion";
 import type { CellVisual, EdgeMark } from "../puzzles/types";
 import { AXIS_COLORS, easeInOut, project4, rotate4, type Rot4, type Vec4, ZERO_ROT } from "./math4d";
 import { layoutsFor, type Layout } from "./layouts";
@@ -435,6 +436,7 @@ export class SpatialView extends Stage {
   }
 
   private computeTargets(animate: boolean, noFrame = false) {
+    if (reducedMotion()) animate = false; // geen vloeiende overgang als 'minder beweging' aanstaat
     const N = this.grid.count;
     if (animate) {
       this.fromPos.set(this.pos);

@@ -39,7 +39,7 @@ Aanpassingen aan de oorspronkelijke regels (en waarom):
 - **Doorsnedes**: een kubus en een tesseract die door een lager-dimensionale wereld zakken (vierkant/driehoek/zeshoek; kubus/viervlak/achtvlak), met schuifbalk.
 - **Lijnen**, **hypervlakken**, **muren in 4D** en **draaien in zes vlakken**.
 
-Voortgang wordt alleen lokaal in de browser bewaard (`localStorage`).
+Voortgang wordt alleen lokaal in de browser bewaard (`localStorage`). Via *Instellingen* maak je een back-up (een JSON-bestand) en zet je die op een ander apparaat terug.
 
 ## Weergaven
 
@@ -49,6 +49,20 @@ Voortgang wordt alleen lokaal in de browser bewaard (`localStorage`).
 - **Navigeren in 3D/4D**: in de ruimte-weergave staan onderaan gecentreerd twee kleine pijlkruisen: links binnen het bord (x/y, met in het midden Wissel/Druk), rechts tussen de borden (z links/rechts, w boven/onder, met ↺). Zo bereik je ook binnenste cellen; *Lijnen* of *Laag* licht de lijnen of de laag van de gekozen cel uit (de rest blijft even groot maar vaag en doorzichtig, met gedimde cijfers); bij *Laag* kies je liggend (y vast), staand (z vast, zoals de borden) of diepte (x vast), en in 4D ook *binnen*: de hele kubus van de gekozen cel (w vast), in de tesseract een binnen- of buitenkubus. Het selectiekader is altijd zichtbaar, ook achter andere cellen. In het platte bord is elke cel direct aan te tikken.
 
 Toetsen: pijltjes bewegen in het bord, `Shift` + `←`/`→` naar het bord links/rechts (z), `Shift` + `↑`/`↓` naar het bord erboven/eronder (w). Cijfers invullen met `1`–`9`, `Ctrl`+`Z` terug, `H` hint.
+
+## Offline en installeren
+
+Na het eerste bezoek werkt de app zonder internet: een service worker (`scripts/sw.template.js`, bij de build ingevuld met de bestandenlijst) bewaart de hele app, ruim 1 MB. Puzzels worden op het apparaat zelf gegenereerd, dus ook nieuwe puzzels werken offline. *Instellingen* toont of offline spelen klaar is. De app is te installeren op het beginscherm (manifest met PNG-iconen, ook maskable).
+
+Een nieuwe versie wordt bij het eerstvolgende bezoek met internet geladen; de service worker zelf wisselt pas als alle tabbladen dicht zijn, zodat een open spel zijn bestanden houdt.
+
+## Toegankelijkheid
+
+- Alles is met het toetsenbord te bedienen; vensters houden de focus vast, sluiten met `Esc` en geven de focus terug.
+- Schermlezers horen de titel van elk scherm, de gekozen cel met coördinaten en waarde, en de status van de puzzel.
+- Schakelknoppen melden of ze aan staan (`aria-pressed`); knoppen met alleen een icoon hebben een naam.
+- Wie in het besturingssysteem *minder beweging* heeft ingesteld, krijgt geen camera-animaties, confetti of draaiende startfiguur.
+- De 3D-weergave zelf is voor schermlezers niet toegankelijk; de bordweergave toont dezelfde puzzel en is dat wel.
 
 ## Puzzelgeneratie
 
@@ -67,14 +81,21 @@ Alle puzzels worden in de browser gegenereerd (Web Worker), reproduceerbaar via 
 - een afwijking van de oplossing telt niet als opgelost, en hints beweren nooit iets wat niet klopt;
 - Lichtjes: het genoemde minimum is echt minimaal; Doolhof: de kortste route klopt; Kamertje verhuren: telling, beurtwissel en computerzetten in hele partijen.
 
+`tests/core.test.ts` test de onderdelen waar alles op leunt: het rooster (buren, lijnen, hypervlakken, samenhang), de toevalsgenerator, de opslag met back-up, het kleuren van Tectonic-gebieden en de opbouw van de cursus.
+
 ## Ontwikkelen
 
 ```bash
 npm install
 npm run dev       # lokale server
 npm test          # generator- en oplostests
-npm run build     # typecheck + productie-build in dist/
+npm run build     # typecheck + productie-build in dist/ (met service worker)
+npm run preview   # de build lokaal bekijken, met dezelfde headers als in productie
 ```
+
+De beveiligingsheaders (onder meer een Content-Security-Policy die alleen eigen code toestaat) staan in `vercel.json`; `vite preview` leest ze daaruit, zodat een overtreding lokaal al zichtbaar is. De app laadt niets van andere sites: geen analytics, geen externe lettertypen.
+
+`scripts/make-icons.mjs` maakt de PNG-iconen en de deelafbeelding opnieuw (vereist Playwright, geen onderdeel van de build).
 
 ## Code
 
@@ -85,7 +106,8 @@ src/games/        Kamertje verhuren (duel + computertegenstander)
 src/view/         plat bord-van-borden, three.js-ruimte, 4D-draadmodel, 4D-wiskunde
 src/course/       hoofdstukken en lessen
 src/ui/           schermen: start, cursus, vrij spelen, speelscherm, les, duel, instellingen
-tests/            generator- en oplostests (vitest)
+scripts/          sjabloon van de service worker, hulpscript voor iconen
+tests/            generator-, oplos- en kerntests (vitest)
 ```
 
 Lettertypen: Outfit en Unbounded (SIL Open Font License, zie `public/fonts`). Tectonic® is een merk van de uitgever; deze app gebruikt alleen de algemene puzzelregel.

@@ -11,7 +11,7 @@ import { AXIS_COLORS } from "../view/math4d";
 import { LAYOUT_LABEL, layoutsFor, type Layout } from "../view/layouts";
 import type { SpatialView } from "../view/spatial";
 import { webglAvailable } from "../view/webgl";
-import { askConfirm, confetti, dimBadge, fmtTime, h, type Screen, toast, UI } from "./dom";
+import { announce, askConfirm, confetti, dimBadge, fmtTime, h, modal, modalOpen, type Screen, toast, UI } from "./dom";
 import { go, stepHref } from "./nav";
 
 export interface PlayParams {
@@ -42,7 +42,7 @@ export function playScreen(p: PlayParams): Screen {
   const timerEl = h("span", { class: "chip time" }, "00:00");
   const progEl = h("span", { class: "chip prog" }, "0%");
   const backHref = step ? "#/cursus" : "#/vrij";
-  const viewSeg = h("div", { class: "seg view-seg", role: "radiogroup", "aria-label": "Weergave" });
+  const viewSeg = h("div", { class: "seg view-seg", role: "group", "aria-label": "Weergave" });
   const top = h(
     "header",
     { class: "topbar" },
@@ -78,7 +78,7 @@ export function playScreen(p: PlayParams): Screen {
   let solved = false;
   let hintMsg = "";
   let clueHL: Map<number, string> | null = null;
-  const statusEl = h("div", { class: "status" });
+  const statusEl = h("div", { class: "status", role: "status" });
   const panelEl = h("div", { class: "panel-items" });
   const cluesEl = h("div", { class: "clues" });
 
@@ -110,17 +110,17 @@ export function playScreen(p: PlayParams): Screen {
     return `<p class="goal">${rules.goal}</p><ul>${rules.rules.map((r) => `<li>${r}</li>`).join("")}</ul>${rules.dimNote ? `<p class="dimnote"><b>${D}D:</b> ${rules.dimNote}</p>` : ""}`;
   }
   function showRules(open: boolean) {
-    const dlg = h(
-      "div",
-      { class: "modal", onclick: (e: Event) => e.target === dlg && dlg.remove() },
+    if (!open) return;
+    const m = modal(
       h(
         "div",
         { class: "sheet" },
-        h("header", {}, h("h2", { html: `${T.name} ${dimBadge(D)}` }), h("button", { class: "round-btn", "aria-label": "Sluiten", html: UI.close, onclick: () => dlg.remove() })),
+        h("header", {}, h("h2", { html: `${T.name} ${dimBadge(D)}` }), h("button", { class: "round-btn", "aria-label": "Sluiten", html: UI.close, onclick: () => m.close() })),
         h("div", { class: "sheet-body rules", html: rulesHtml() + keysHtml() }),
       ),
+      `Spelregels ${T.name}`,
     );
-    if (open) root.appendChild(dlg);
+    root.appendChild(m.el);
   }
   function keysHtml() {
     const k = ["<kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> bewegen in het bord"];
@@ -218,10 +218,10 @@ export function playScreen(p: PlayParams): Screen {
   }
 
   /**
-   * Doolhof: de pijlkruisen staan in het speelvlak, onderaan gecentreerd, net als de navigatiekruisen
-   * van de andere puzzels in de 3D-weergave. In de bordweergave zweven ze onder het bord.
+   * Doolhofpijlen: alleen richtingen zonder muur zijn te kiezen. De pijlkruisen staan in het speelvlak,
+   * onderaan gecentreerd, net als de navigatiekruisen van de andere puzzels in de 3D-weergave; in de
+   * bordweergave zweven ze onder het bord.
    */
-  /** Doolhofpijlen: alleen richtingen zonder muur zijn te kiezen. */
   function updateDpad() {
     for (const { a, d, b } of dpad) b.disabled = !(game as any).canMove?.(a, d);
   }
@@ -329,7 +329,7 @@ export function playScreen(p: PlayParams): Screen {
       },
     });
     spinBtn.hidden = space.layout !== "tesseract";
-    const gap = h("input", { type: "range", min: "0", max: "1.2", step: "0.05", value: String(space.gap), title: "Ruimte tussen cellen" }) as HTMLInputElement;
+    const gap = h("input", { type: "range", min: "0", max: "1.2", step: "0.05", value: String(space.gap), title: "Ruimte tussen cellen", "aria-label": "Ruimte tussen cellen" }) as HTMLInputElement;
     gap.oninput = () => space!.setGap(Number(gap.value));
     tools.append(spinBtn, h("label", { class: "gap", title: "Ruimte tussen cellen" }, h("span", {}, "ruimte"), gap), h("button", { class: "round-btn small", title: "Camera herstellen", html: UI.camera, onclick: () => space!.resetCamera() }));
     const sdock = h("div", { class: "space-dock" });
@@ -443,7 +443,7 @@ export function playScreen(p: PlayParams): Screen {
   }
 
   function buildLayerPicker(): HTMLElement {
-    const seg = h("div", { class: "seg small layer-axis", role: "radiogroup", "aria-label": "Lagen langs as" });
+    const seg = h("div", { class: "seg small layer-axis", role: "group", "aria-label": "Lagen langs as" });
     const cur = lastLayerAxis[D] ?? 2;
     for (let a = 0; a < D; a++) {
       const name = "xyzw"[a];
@@ -841,9 +841,25 @@ export function playScreen(p: PlayParams): Screen {
       });
   }
 
+  /** Voor schermlezers: plek en inhoud van de gekozen cel. */
+  const ICON_NAMES: Record<string, string> = { bulb: "lamp aan", ship: "schip", water: "water", tent: "tent", tree: "boom", grass: "gras", circle: "wit", player: "jij", goal: "doel" };
+  let lastSaid = "";
+  function describeSel() {
+    if (sel < 0) return;
+    const g = game.grid;
+    const v = game.visual(sel);
+    const where = g.coord(sel).map((c, a) => `${AX[a]} ${c}`).join(", ");
+    const what = v.hidden ? "verborgen" : v.text ? `${v.text}${v.given ? ", gegeven" : ""}` : v.icon ? (ICON_NAMES[v.icon] ?? v.icon) : "leeg";
+    const msg = `${where}: ${what}`;
+    if (msg === lastSaid) return;
+    lastSaid = msg;
+    announce(msg);
+  }
+
   function paintSel() {
     flat.setSelected(sel);
     space?.setSelected(sel);
+    describeSel();
     for (const { a, d, b } of navBtns) b.disabled = sel >= 0 && game.grid.step(sel, a, d) < 0;
     applyFocus();
     updatePad();
@@ -930,7 +946,7 @@ export function playScreen(p: PlayParams): Screen {
             : h("a", { class: "btn primary", href: "#/cursus" }, "Klaar!"),
       ),
     );
-    const ov = h("div", { class: "solved" }, card);
+    const ov = h("div", { class: "solved", role: "dialog", "aria-modal": "true", "aria-label": "Puzzel opgelost" }, card);
     // het opgeloste bord bekijken: het venster gaat weg, de keuzes verhuizen naar de knoppenbalk
     card.appendChild(
       h(
@@ -947,12 +963,17 @@ export function playScreen(p: PlayParams): Screen {
         "Bord bekijken",
       ),
     );
-    setTimeout(() => !disposed && root.appendChild(ov), 650);
+    setTimeout(() => {
+      if (disposed) return;
+      root.appendChild(ov);
+      announce(`Opgelost in ${fmtTime(seconds)}.`);
+      card.querySelector<HTMLElement>(".btn.primary")?.focus({ preventScroll: true });
+    }, 650);
   }
 
   /* ---------- toetsenbord ---------- */
   const onKey = (e: KeyboardEvent) => {
-    if (!game || (e.target as HTMLElement).closest("input,textarea")) return;
+    if (!game || (e.target as HTMLElement).closest("input,textarea") || modalOpen()) return;
     const k = e.key;
     if ((e.ctrlKey || e.metaKey) && k.toLowerCase() === "z") {
       e.preventDefault();

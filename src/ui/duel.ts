@@ -227,7 +227,7 @@ export function duelScreen(presetId: string, stepId?: string): Screen {
     const nxt = step ? nextStep(step.step.id) : null;
     const ov = h(
       "div",
-      { class: "solved" },
+      { class: "solved", role: "dialog", "aria-modal": "true", "aria-label": "Einde van het spel" },
       h(
         "div",
         { class: "solved-card" },
