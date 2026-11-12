@@ -66,6 +66,15 @@ window.addEventListener("vite:preloadError", (e) => {
   if (reloadIfStale()) e.preventDefault();
 });
 
+// Offline: de service worker bewaart de app na het eerste bezoek. Alleen in de gebouwde versie.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {
+      /* zonder service worker werkt de app gewoon, alleen niet offline */
+    });
+  });
+}
+
 /** Scherm waarvan de code (met de 3D-bibliotheek) pas geladen wordt als het nodig is. */
 function lazyScreen(load: () => Promise<Screen>): Screen {
   const el = h("div", { class: "screen lazy" }, h("div", { class: "loading" }, h("div", { class: "spinner", html: UI.tesseract }), h("p", {}, "Laden…")));

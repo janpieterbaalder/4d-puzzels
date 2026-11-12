@@ -1,10 +1,19 @@
 {
+  "id": "/",
   "name": "Puzzel⁴ — puzzelen in vier dimensies",
   "short_name": "Puzzel⁴",
+  "description": "Bekende puzzels, eerst in 2D, dan in 3D en ten slotte als echte 4D-puzzel.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#05060f",
   "theme_color": "#05060f",
   "lang": "nl",
-  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+  "categories": ["games", "education"],
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
 }
