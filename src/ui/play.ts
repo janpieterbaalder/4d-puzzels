@@ -218,10 +218,10 @@ export function playScreen(p: PlayParams): Screen {
   }
 
   /**
-   * Doolhof: de pijlkruisen staan in het speelvlak, onderaan gecentreerd, net als de navigatiekruisen
-   * van de andere puzzels in de 3D-weergave. In de bordweergave zweven ze onder het bord.
+   * Doolhofpijlen: alleen richtingen zonder muur zijn te kiezen. De pijlkruisen staan in het speelvlak,
+   * onderaan gecentreerd, net als de navigatiekruisen van de andere puzzels in de 3D-weergave; in de
+   * bordweergave zweven ze onder het bord.
    */
-  /** Doolhofpijlen: alleen richtingen zonder muur zijn te kiezen. */
   function updateDpad() {
     for (const { a, d, b } of dpad) b.disabled = !(game as any).canMove?.(a, d);
   }

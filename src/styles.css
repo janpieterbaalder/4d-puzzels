@@ -398,6 +398,8 @@ kbd {
 /* ================= home ================= */
 .home {
   position: relative;
+  /* de tesseract steekt rechts buiten beeld; clip voorkomt dat de pagina daardoor breder wordt dan het scherm */
+  overflow-x: clip;
 }
 .hero-canvas {
   position: absolute;
